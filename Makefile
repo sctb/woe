@@ -18,4 +18,3 @@ clean:
 	rm -f woe
 
 .PHONY: all options clean
-
