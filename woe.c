@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define w_whitespacep(x) (x == ' ' || x == '\t')
+#define w_spacep(x) (x == ' ' || x == '\t')
 
 enum w_token_type {
 	/* factors */
@@ -166,7 +166,7 @@ w_read_symbol(struct w_reader *r)
 
 	while(c = w_read_char(r))
 	{
-		if(w_whitespacep(c) || c == '\n')
+		if(w_spacep(c) || c == '\n')
 		{
 			w_unread_char(r);
 			break;
@@ -191,7 +191,7 @@ w_read_token(struct w_reader *r)
 restart:
 	do {
 		c = w_read_char(r);
-	} while(w_whitespacep(c));
+	} while(w_spacep(c));
 
 	if(c == '(')
 	{
