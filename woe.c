@@ -7,7 +7,7 @@
 enum w_token_type {
 	/* factors */
 	WT_STRING,
-	WT_FIXNUM,
+	WT_NUMBER,
 	WT_LSQUARE,
 	WT_SYMBOL,
 
@@ -38,11 +38,13 @@ enum w_tag {
 	W_BOOL,
 	W_STRING,
 	W_FIXNUM,
+	W_FLONUM,
 	W_QUOT
 };
 
 union w_value {
 	long fixnum;
+	double flonum;
 	char *string;
 	void(*proc)();
 	struct w_node *node;
@@ -89,15 +91,102 @@ w_read_char(struct w_reader *r)
 	return r->buffer[r->column++];
 }
 
+void
+w_unread_char(struct w_reader *r)
+{
+	r->column--;
+}
+
+char *
+w_read_string(struct w_reader *r)
+{
+	size_t pos;
+	char c;
+	char *s;
+	char buffer[1024];
+
+	pos = 0;
+
+	while ((c = w_read_char(r)) != '"') {
+		if(c == '\\') {
+			buffer[pos++] = c;
+			c = w_read_char(r);
+		}
+		buffer[pos++] = c;
+	}
+
+	buffer[pos] = '\0';
+	s = (char*)malloc(pos);
+	strncpy(s, buffer, pos + 1);
+
+	return s;
+}
+
+char *
+w_read_number(struct w_reader *r)
+{
+	size_t pos;
+	char c;
+	char *s;
+	char buffer[1024];
+
+	pos = 0;
+
+	while(c = w_read_char(r))
+	{
+		if(!strchr("0123456789+-eE.", c))
+		{
+			w_unread_char(r);
+
+			if(pos > 1 || (pos == 1 && buffer[0] != '-'))
+				break;
+			else
+				return NULL;
+		}
+
+		buffer[pos++] = c;
+	}
+
+	buffer[pos] = '\0';
+	s = (char*)malloc(pos);
+	strncpy(s, buffer, pos + 1);
+
+	return s;
+}
+
+char *
+w_read_symbol(struct w_reader *r)
+{
+	size_t pos;
+	char c;
+	char *s;
+	char buffer[1024];
+
+	pos = 0;
+
+	while(c = w_read_char(r))
+	{
+		if(w_whitespacep(c) || c == '\n')
+		{
+			w_unread_char(r);
+			break;
+		} else
+			buffer[pos++] = c;
+	}
+
+	buffer[pos] = '\0';
+	s = (char*)malloc(pos);
+	strncpy(s, buffer, pos + 1);
+
+	return s;
+}
+
+
 struct w_token
 w_read_token(struct w_reader *r)
 {
-	int pos;
 	char c;
-	char buffer[1024];
 	struct w_token token;
-
-	pos = 0;
 
 restart:
 	do {
@@ -133,17 +222,26 @@ restart:
 		token.type = WT_SEMICOL;
 		return token;
 	case '"':
-		while ((c = w_read_char(r)) != '"') {
-			if(c == '\\') {
-				buffer[pos++] = c;
-				c = w_read_char(r);
-			}
-			buffer[pos++] = c;
-		}
-		buffer[pos] = '\0';
 		token.type = WT_STRING;
-		token.string = (char*)malloc(strlen(buffer) + 1);
-		strcpy(token.string, buffer);
+		token.string = w_read_string(r);
+		return token;
+	case '-':
+		w_unread_char(r);
+		if((token.string = w_read_number(r)) != NULL)
+		{
+			token.type = WT_NUMBER;
+			return token;
+		}
+	default:
+		w_unread_char(r);
+		if(isdigit(c))
+		{
+			token.type = WT_NUMBER;
+			token.string = w_read_number(r);
+		} else {
+			token.type = WT_SYMBOL;
+			token.string = w_read_symbol(r);
+		}
 		return token;
 	}
 }
@@ -181,6 +279,14 @@ main(int argc, char *argv[])
 				break;
 			case WT_STRING:
 				printf("STRING: %s\n", t.string);
+				free(t.string);
+				break;
+			case WT_NUMBER:
+				printf("NUMBER: %s\n", t.string);
+				free(t.string);
+				break;
+			case WT_SYMBOL:
+				printf("SYMBOL: %s\n", t.string);
 				free(t.string);
 				break;
 			}
