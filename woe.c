@@ -115,9 +115,9 @@ w_read_string(struct w_reader *r)
 		buffer[pos++] = c;
 	}
 
-	buffer[pos] = '\0';
+	buffer[pos++] = '\0';
 	s = (char*)malloc(pos);
-	strncpy(s, buffer, pos + 1);
+	strncpy(s, buffer, pos);
 
 	return s;
 }
@@ -147,9 +147,9 @@ w_read_number(struct w_reader *r)
 		buffer[pos++] = c;
 	}
 
-	buffer[pos] = '\0';
+	buffer[pos++] = '\0';
 	s = (char*)malloc(pos);
-	strncpy(s, buffer, pos + 1);
+	strncpy(s, buffer, pos);
 
 	return s;
 }
@@ -174,9 +174,9 @@ w_read_symbol(struct w_reader *r)
 			buffer[pos++] = c;
 	}
 
-	buffer[pos] = '\0';
+	buffer[pos++] = '\0';
 	s = (char*)malloc(pos);
-	strncpy(s, buffer, pos + 1);
+	strncpy(s, buffer, pos);
 
 	return s;
 }
