@@ -8,8 +8,7 @@ all:	options $(PROG)
 options:
 	@echo "CFLAGS\t= $(CFLAGS)"
 	@echo "LDFLAGS\t= $(LDFLAGS)"
-	@echo "CC\t= $(CC)"
-	@echo ""
+	@echo "CC\t= $(CC)\n"
 
 SRC	= woe.c
 OBJ	= woe.o

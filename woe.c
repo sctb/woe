@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -132,7 +133,7 @@ w_read_number(struct w_reader *r)
 
 	pos = 0;
 
-	while (c = w_read_char(r))
+	while ((c = w_read_char(r)) != '\0')
 	{
 		if (!strchr("0123456789+-eE.", c))
 		{
@@ -163,7 +164,7 @@ w_read_symbol(struct w_reader *r)
 
 	pos = 0;
 
-	while (c = w_read_char(r))
+	while ((c = w_read_char(r)) != '\0')
 	{
 		if (w_spacep(c) || c == '\n')
 		{
@@ -253,42 +254,41 @@ main(int argc, char *argv[])
 
 	w_init_reader(&r, stdin);
 
+prompt:
+	printf("OK ");
+	
 	while (1)
 	{
-		printf("OK ");
-
-		while ((t = w_read_token(&r)).type != WT_EOL)
+		switch ((t = w_read_token(&r)).type)
 		{
-			if (t.type == WT_EOF)
-				return 0;
-
-			switch (t.type)
-			{
-			case WT_LSQUARE:
-				printf("LSQUARE\n");
-				break;
-			case WT_RSQUARE:
-				printf("RSQUARE\n");
-				break;
-			case WT_COLON:
-				printf("COLON\n");
-				break;
-			case WT_SEMICOL:
-				printf("SEMICOL\n");
-				break;
-			case WT_STRING:
-				printf("STRING: %s\n", t.string);
-				free(t.string);
-				break;
-			case WT_NUMBER:
-				printf("NUMBER: %s\n", t.string);
-				free(t.string);
-				break;
-			case WT_SYMBOL:
-				printf("SYMBOL: %s\n", t.string);
-				free(t.string);
-				break;
-			}
+		case WT_EOF:
+			return 0;
+		case WT_EOL:
+			goto prompt;
+		case WT_LSQUARE:
+			printf("LSQUARE\n");
+			break;
+		case WT_RSQUARE:
+			printf("RSQUARE\n");
+			break;
+		case WT_COLON:
+			printf("COLON\n");
+			break;
+		case WT_SEMICOL:
+			printf("SEMICOL\n");
+			break;
+		case WT_STRING:
+			printf("STRING: %s\n", t.string);
+			free(t.string);
+			break;
+		case WT_NUMBER:
+			printf("NUMBER: %s\n", t.string);
+			free(t.string);
+			break;
+		case WT_SYMBOL:
+			printf("SYMBOL: %s\n", t.string);
+			free(t.string);
+			break;
 		}
 	}
 
