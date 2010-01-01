@@ -1,20 +1,28 @@
-CC	?= cc
+PROG	= woe
 
+CC	?= cc
 CFLAGS	+= -Wall -ansi -pedantic
 
-all:	options woe
+all:	options $(PROG)
 
 options:
-	@echo "CFLAGS  = ${CFLAGS}"
-	@echo "LDFLAGS = ${LDFLAGS}"
-	@echo "CC      = ${CC}"
+	@echo "CFLAGS\t= $(CFLAGS)"
+	@echo "LDFLAGS\t= $(LDFLAGS)"
+	@echo "CC\t= $(CC)"
 	@echo ""
 
-woe:
-	@echo CC -o $@
-	@${CC} $@.c -o $@ ${LDFLAGS}
+SRC	= woe.c
+OBJ	= woe.o
+
+.c.o:
+	@echo "CC\t$<"
+	@$(CC) -c $(CFLAGS) $<
+
+$(PROG): $(OBJ)
+	@echo "LINK\t$@"
+	@$(CC) -o $@ $(OBJ) $(LDFLAGS)
 
 clean:
-	rm -f woe
+	rm -f $(PROG) $(OBJ)
 
 .PHONY: all options clean
