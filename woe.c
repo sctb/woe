@@ -158,7 +158,7 @@ w_read_number(struct w_reader *r)
 		buffer[pos++] = c;
 	}
 
-	buffer[pos++] = '\0';
+	buffer[pos + 1] = '\0';
 
 	if (t.type == WT_FLONUM)
 		t.value.flonum = strtod(buffer, NULL);
