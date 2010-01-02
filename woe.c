@@ -8,7 +8,8 @@
 enum w_token_type {
 	/* factors */
 	WT_STRING,
-	WT_NUMBER,
+	WT_FIXNUM,
+	WT_FLONUM,
 	WT_LSQUARE,
 	WT_SYMBOL,
 
@@ -23,8 +24,12 @@ enum w_token_type {
 };
 
 struct w_token {
-	enum 	w_token_type type;
-	char 	*string;
+	enum w_token_type type;
+	union {
+		long	fixnum;
+		double	flonum;
+		char 	*string;
+	} value;
 };
 
 struct w_reader {
@@ -98,15 +103,16 @@ w_unread_char(struct w_reader *r)
 	r->column--;
 }
 
-char *
+struct w_token
 w_read_string(struct w_reader *r)
 {
 	size_t 	pos;
 	char 	c;
-	char 	*s;
 	char 	buffer[1024];
+	struct	w_token t;
 
-	pos = 0;
+	pos 	= 0;
+	t.type 	= WT_STRING;
 
 	while ((c = w_read_char(r)) != '"') {
 		if (c == '\\') {
@@ -117,21 +123,22 @@ w_read_string(struct w_reader *r)
 	}
 
 	buffer[pos++] = '\0';
-	s = (char*)malloc(pos);
-	strncpy(s, buffer, pos);
+	t.value.string = (char*)malloc(pos);
+	strncpy(t.value.string, buffer, pos);
 
-	return s;
+	return t;
 }
 
-char *
+struct w_token
 w_read_number(struct w_reader *r)
 {
 	size_t 	pos;
 	char 	c;
-	char 	*s;
 	char 	buffer[1024];
+	struct	w_token t;
 
-	pos = 0;
+	pos 	= 0;
+	t.type 	= WT_SYMBOL;
 
 	while ((c = w_read_char(r)) != '\0')
 	{
@@ -142,27 +149,35 @@ w_read_number(struct w_reader *r)
 			if (pos > 1 || (pos == 1 && buffer[0] != '-'))
 				break;
 			else
-				return NULL;
+				return t;
 		}
 		buffer[pos++] = c;
 	}
 
 	buffer[pos++] = '\0';
-	s = (char*)malloc(pos);
-	strncpy(s, buffer, pos);
 
-	return s;
+	if (strpbrk(buffer, ".eE"))
+	{
+		t.type = WT_FLONUM;
+		t.value.flonum = strtod(buffer, NULL);
+	} else {
+		t.type = WT_FIXNUM;
+		t.value.fixnum = strtol(buffer, NULL, 10);
+	}
+
+	return t;
 }
 
-char *
+struct w_token
 w_read_symbol(struct w_reader *r)
 {
 	size_t 	pos;
 	char 	c;
-	char 	*s;
 	char 	buffer[1024];
+	struct	w_token t;
 
-	pos = 0;
+	pos 	= 0;
+	t.type	= WT_SYMBOL;
 
 	while ((c = w_read_char(r)) != '\0')
 	{
@@ -175,10 +190,10 @@ w_read_symbol(struct w_reader *r)
 	}
 
 	buffer[pos++] = '\0';
-	s = (char*)malloc(pos);
-	strncpy(s, buffer, pos);
+	t.value.string = (char*)malloc(pos);
+	strncpy(t.value.string, buffer, pos);
 
-	return s;
+	return t;
 }
 
 
@@ -186,7 +201,7 @@ struct w_token
 w_read_token(struct w_reader *r)
 {
 	char 	c;
-	struct 	w_token token;
+	struct 	w_token t;
 
 restart:
 	do {
@@ -204,45 +219,36 @@ restart:
 	switch (c)
 	{
 	case '\n':
-		token.type = WT_EOL;
-		return token;
+		t.type = WT_EOL;
+		return t;
 	case '\0':
-		token.type = WT_EOF;
-		return token;
+		t.type = WT_EOF;
+		return t;
 	case '[':
-		token.type = WT_LSQUARE;
-		return token;
+		t.type = WT_LSQUARE;
+		return t;
 	case ']':
-		token.type = WT_RSQUARE;
-		return token;
+		t.type = WT_RSQUARE;
+		return t;
 	case ':':
-		token.type = WT_COLON;
-		return token;
+		t.type = WT_COLON;
+		return t;
 	case ';':
-		token.type = WT_SEMICOL;
-		return token;
+		t.type = WT_SEMICOL;
+		return t;
 	case '"':
-		token.type = WT_STRING;
-		token.string = w_read_string(r);
-		return token;
+		return w_read_string(r);
 	case '-':
 		w_unread_char(r);
-		if ((token.string = w_read_number(r)) != NULL)
-		{
-			token.type = WT_NUMBER;
-			return token;
-		}
+		if ((t = w_read_number(r)).type != WT_SYMBOL)
+			return t;
 	default:
 		w_unread_char(r);
 		if (isdigit(c))
-		{
-			token.type = WT_NUMBER;
-			token.string = w_read_number(r);
-		} else {
-			token.type = WT_SYMBOL;
-			token.string = w_read_symbol(r);
-		}
-		return token;
+			t = w_read_number(r);
+		else
+			t = w_read_symbol(r);
+		return t;
 	}
 }
 
@@ -256,7 +262,7 @@ main(int argc, char *argv[])
 
 prompt:
 	printf("OK ");
-	
+
 	while (1)
 	{
 		switch ((t = w_read_token(&r)).type)
@@ -278,16 +284,18 @@ prompt:
 			printf("SEMICOL\n");
 			break;
 		case WT_STRING:
-			printf("STRING: %s\n", t.string);
-			free(t.string);
+			printf("STRING: %s\n", t.value.string);
+			free(t.value.string);
 			break;
-		case WT_NUMBER:
-			printf("NUMBER: %s\n", t.string);
-			free(t.string);
+		case WT_FIXNUM:
+			printf("FIXNUM: %ld\n", t.value.fixnum);
+			break;
+		case WT_FLONUM:
+			printf("FLONUM: %.2f\n", t.value.flonum);
 			break;
 		case WT_SYMBOL:
-			printf("SYMBOL: %s\n", t.string);
-			free(t.string);
+			printf("SYMBOL: %s\n", t.value.string);
+			free(t.value.string);
 			break;
 		}
 	}
