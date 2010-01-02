@@ -142,25 +142,27 @@ w_read_number(struct w_reader *r)
 
 	while ((c = w_read_char(r)) != '\0')
 	{
-		if (!strchr("0123456789+-eE.", c))
+		if (!strchr("0123456789+-", c))
 		{
-			w_unread_char(r);
+			if (strchr(".eE", c))
+				t.type = WT_FLONUM;
+			else {
+				w_unread_char(r);
 
-			if (pos > 1 || (pos == 1 && buffer[0] != '-'))
-				break;
-			else
-				return t;
+				if (pos > 1 || (pos == 1 && buffer[0] != '-'))
+					break;
+				else
+					return t;
+			}
 		}
 		buffer[pos++] = c;
 	}
 
 	buffer[pos++] = '\0';
 
-	if (strpbrk(buffer, ".eE"))
-	{
-		t.type = WT_FLONUM;
+	if (t.type == WT_FLONUM)
 		t.value.flonum = strtod(buffer, NULL);
-	} else {
+	else {
 		t.type = WT_FIXNUM;
 		t.value.fixnum = strtol(buffer, NULL, 10);
 	}
