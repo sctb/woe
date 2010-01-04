@@ -126,7 +126,7 @@ w_read_string(struct w_reader *r)
 	t.value.string = (char*)malloc(pos);
 	strncpy(t.value.string, buffer, pos);
 
-	return t;
+	return (t);
 }
 
 struct w_token
@@ -152,7 +152,7 @@ w_read_number(struct w_reader *r)
 				if (pos > 1 || (pos == 1 && buffer[0] != '-'))
 					break;
 				else
-					return t;
+					return (t);
 			}
 		}
 		buffer[pos++] = c;
@@ -167,7 +167,7 @@ w_read_number(struct w_reader *r)
 		t.value.fixnum = strtol(buffer, NULL, 10);
 	}
 
-	return t;
+	return (t);
 }
 
 struct w_token
@@ -195,7 +195,7 @@ w_read_symbol(struct w_reader *r)
 	t.value.string = (char*)malloc(pos);
 	strncpy(t.value.string, buffer, pos);
 
-	return t;
+	return (t);
 }
 
 
@@ -270,7 +270,7 @@ prompt:
 		switch ((t = w_read_token(&r)).type)
 		{
 		case WT_EOF:
-			return 0;
+			return (0);
 		case WT_EOL:
 			goto prompt;
 		case WT_LSQUARE:
@@ -302,5 +302,5 @@ prompt:
 		}
 	}
 
-	return 0;
+	return (0);
 }
