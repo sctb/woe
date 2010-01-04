@@ -34,10 +34,13 @@ struct w_token {
 
 struct w_reader {
 	FILE 	*stream;
+	int 	buflen;
+	int	bufpos;
+	char 	buffer[1024];
+
+	/* unused */
 	int 	line;
 	int 	column;
-	int 	len;
-	char 	buffer[1024];
 };
 
 enum w_tag {
@@ -76,30 +79,40 @@ void
 w_init_reader(struct w_reader *r, FILE *stream)
 {
 	r->stream	= stream;
-	r->line 	= 0;
+	r->line 	= 1;
 	r->column 	= 0;
-	r->len 		= 0;
+	r->buflen	= 0;
+	r->bufpos	= 0;
 }
 
 char
 w_read_char(struct w_reader *r)
 {
-	if (r->column == r->len)
+	char c;
+
+	if (r->bufpos == r->buflen)
 	{
 		if (fgets(r->buffer, 1024, r->stream) == NULL)
-			return '\0';
-
-		r->line++;
-		r->column = 0;
-		r->len = strlen(r->buffer);
+			return ('\0');
+		r->buflen = strlen(r->buffer);
+		r->bufpos = 0;
 	}
 
-	return r->buffer[r->column++];
+	c = r->buffer[r->bufpos++];
+
+	if (c == '\n')
+	{
+		r->line++;
+		r->column = 0;
+	}
+
+	return (c);
 }
 
 void
 w_unread_char(struct w_reader *r)
 {
+	r->bufpos--;
 	r->column--;
 }
 
