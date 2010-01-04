@@ -5,20 +5,26 @@
 
 #define w_spacep(x) (x == ' ' || x == '\t')
 
+#define w_starts_atomp(x) ((x).type <= WT_SYMBOL)
+
+#define w_make_atom(typ,val,stk,t,n)			\
+	do {						\
+		n->type		= typ;			\
+		n->value.val	= t.value.val;		\
+		n->next		= stk;			\
+	} while (0);
+
 enum w_token_type {
-	/* factors */
 	WT_STRING,
 	WT_FIXNUM,
 	WT_FLONUM,
 	WT_LSQUARE,
 	WT_SYMBOL,
 
-	/* other */
 	WT_COLON,
 	WT_SEMICOL,
 	WT_RSQUARE,
 
-	/* terminators */
 	WT_EOL,
 	WT_EOF
 };
@@ -43,12 +49,12 @@ struct w_reader {
 	int 	column;
 };
 
-enum w_tag {
-	W_BOOL,
+enum w_type {
 	W_STRING,
 	W_FIXNUM,
 	W_FLONUM,
-	W_QUOT
+	W_QUOT,
+	W_SYMBOL
 };
 
 union w_value {
@@ -56,23 +62,19 @@ union w_value {
 	double 	flonum;
 	char 	*string;
 	struct 	w_node 	*node;
-	struct 	w_entry	*entry;
-	void(*proc)();
 };
 
 struct w_node {
-	enum 	w_tag 	tag;
+	enum 	w_type 	type;
 	union 	w_value	value;
 	struct 	w_node 	*next;
 };
 
-struct w_entry {
-	char 	*name;
-	union {
-		struct w_node *body;
-		void(*proc)();
-	} value;
-	struct 	w_entry	*next;
+struct w_word {
+	char 		*name;
+	struct w_node 	*quot;
+	struct w_node	*(*builtin)(struct w_node*);
+	struct w_word	*next;
 };
 
 void
@@ -235,36 +237,115 @@ restart:
 	{
 	case '\n':
 		t.type = WT_EOL;
-		return t;
+		return (t);
 	case '\0':
 		t.type = WT_EOF;
-		return t;
+		return (t);
 	case '[':
 		t.type = WT_LSQUARE;
-		return t;
+		return (t);
 	case ']':
 		t.type = WT_RSQUARE;
-		return t;
+		return (t);
 	case ':':
 		t.type = WT_COLON;
-		return t;
+		return (t);
 	case ';':
 		t.type = WT_SEMICOL;
-		return t;
+		return (t);
 	case '"':
-		return w_read_string(r);
+		return (w_read_string(r));
 	case '-':
 		w_unread_char(r);
 		if ((t = w_read_number(r)).type != WT_SYMBOL)
-			return t;
+			return (t);
 	default:
 		w_unread_char(r);
 		if (isdigit(c))
 			t = w_read_number(r);
 		else
 			t = w_read_symbol(r);
-		return t;
+		return (t);
 	}
+}
+
+struct w_node*
+w_read_quot(struct w_reader*, struct w_node*, struct w_node*);
+
+struct w_node*
+w_read_atom(struct w_reader *r, struct w_node *stack, struct w_token t)
+{
+	struct w_node *n;
+
+	n = (struct w_node*)malloc(sizeof(struct w_node));
+
+	switch (t.type)
+	{
+	case WT_FIXNUM:
+		w_make_atom(W_FIXNUM, fixnum, stack, t, n)
+		break;
+	case WT_FLONUM:
+		w_make_atom(W_FLONUM, flonum, stack, t, n)
+		break;
+	case WT_STRING:
+		w_make_atom(W_STRING, string, stack, t, n)
+		break;
+	case WT_SYMBOL:
+		w_make_atom(W_SYMBOL, string, stack, t, n)
+		break;
+	case WT_LSQUARE:
+		n = w_read_quot(r, stack, n);
+		break;
+	default:
+		return (NULL);
+	}
+
+	return (n);
+}
+
+struct w_node*
+w_read_quot(struct w_reader *r, struct w_node *stack, struct w_node *n)
+{
+	struct w_token 	t;
+
+	n->value.node 	= NULL;
+	n->type		= W_QUOT;
+	n->next 	= stack;
+
+	while (w_starts_atomp(t = w_read_token(r)))
+	{
+		n->value.node = w_read_atom(r, n->value.node, t);
+	}
+
+	return (n);
+}
+
+void
+w_print(struct w_node* n)
+{
+	switch (n->type)
+	{
+	case W_STRING:
+		printf("\"%s\" ", n->value.string);
+		break;
+	case W_FIXNUM:
+		printf("%ld ", n->value.fixnum);
+		break;
+	case W_FLONUM:
+		printf("%.2f ", n->value.flonum);
+		break;
+	case W_QUOT:
+		printf("[ ");
+		w_print(n->value.node);
+		printf("] ");
+		break;
+	case W_SYMBOL:
+		printf("%s ", n->value.string);
+		break;
+	}
+
+	if (n->next != NULL)
+		w_print(n->next);
 }
 
 int
@@ -272,10 +353,12 @@ main(int argc, char *argv[])
 {
 	struct w_token 	t;
 	struct w_reader	r;
+	struct w_node	*stack;
 
 	w_init_reader(&r, stdin);
 
 prompt:
+	stack = NULL;
 	printf("OK ");
 
 	while (1)
@@ -285,33 +368,15 @@ prompt:
 		case WT_EOF:
 			return (0);
 		case WT_EOL:
+			if (stack != NULL)
+			{
+				printf("( ");
+				w_print(stack);
+				printf(")\n");
+			}
 			goto prompt;
-		case WT_LSQUARE:
-			printf("LSQUARE\n");
-			break;
-		case WT_RSQUARE:
-			printf("RSQUARE\n");
-			break;
-		case WT_COLON:
-			printf("COLON\n");
-			break;
-		case WT_SEMICOL:
-			printf("SEMICOL\n");
-			break;
-		case WT_STRING:
-			printf("STRING: %s\n", t.value.string);
-			free(t.value.string);
-			break;
-		case WT_FIXNUM:
-			printf("FIXNUM: %ld\n", t.value.fixnum);
-			break;
-		case WT_FLONUM:
-			printf("FLONUM: %.2f\n", t.value.flonum);
-			break;
-		case WT_SYMBOL:
-			printf("SYMBOL: %s\n", t.value.string);
-			free(t.value.string);
-			break;
+		default:
+			stack = w_read_atom(&r, stack, t);
 		}
 	}
 
