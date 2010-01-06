@@ -273,7 +273,7 @@ struct w_node*
 w_read_quot(struct w_reader*, struct w_node*, struct w_node*);
 
 struct w_node*
-w_read_atom(struct w_reader *r, struct w_node *stack, struct w_token t)
+w_read_atom(struct w_reader *r, struct w_token t, struct w_node *stack)
 {
 	struct w_node *n;
 
@@ -294,7 +294,7 @@ w_read_atom(struct w_reader *r, struct w_node *stack, struct w_token t)
 		w_make_atom(W_SYMBOL, string, stack, t, n)
 		break;
 	case WT_LSQUARE:
-		n = w_read_quot(r, stack, n);
+		n = w_read_quot(r, n, stack);
 		break;
 	default:
 		return (NULL);
@@ -304,7 +304,7 @@ w_read_atom(struct w_reader *r, struct w_node *stack, struct w_token t)
 }
 
 struct w_node*
-w_read_quot(struct w_reader *r, struct w_node *stack, struct w_node *n)
+w_read_quot(struct w_reader *r, struct w_node *n, struct w_node *stack)
 {
 	struct w_token 	t;
 
@@ -314,7 +314,7 @@ w_read_quot(struct w_reader *r, struct w_node *stack, struct w_node *n)
 
 	while (w_starts_atomp(t = w_read_token(r)))
 	{
-		n->value.node = w_read_atom(r, n->value.node, t);
+		n->value.node = w_read_atom(r, t, n->value.node);
 	}
 
 	return (n);
@@ -376,7 +376,7 @@ prompt:
 			}
 			goto prompt;
 		default:
-			stack = w_read_atom(&r, stack, t);
+			stack = w_read_atom(&r, t, stack);
 		}
 	}
 
