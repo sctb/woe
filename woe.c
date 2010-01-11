@@ -4,15 +4,7 @@
 #include <string.h>
 
 #define w_spacep(x) (x == ' ' || x == '\t')
-
 #define w_starts_atomp(x) ((x).type <= WT_SYMBOL)
-
-#define w_make_atom(typ,val,stk,t,n)			\
-	do {						\
-		n->type		= typ;			\
-		n->value.val	= t.value.val;		\
-		n->next		= stk;			\
-	} while (0);
 
 enum w_token_type {
 	WT_STRING,
@@ -270,51 +262,107 @@ restart:
 }
 
 struct w_node*
-w_read_quot(struct w_reader*, struct w_node*, struct w_node*);
+w_alloc_node()
+{
+	return ((struct w_node*)malloc(sizeof(struct w_node)));
+}
 
 struct w_node*
-w_read_atom(struct w_reader *r, struct w_token t, struct w_node *stack)
+w_make_fixnum(long value)
 {
 	struct w_node *n;
 
-	n = (struct w_node*)malloc(sizeof(struct w_node));
+	n = w_alloc_node();
 
-	switch (t.type)
-	{
-	case WT_FIXNUM:
-		w_make_atom(W_FIXNUM, fixnum, stack, t, n)
-		break;
-	case WT_FLONUM:
-		w_make_atom(W_FLONUM, flonum, stack, t, n)
-		break;
-	case WT_STRING:
-		w_make_atom(W_STRING, string, stack, t, n)
-		break;
-	case WT_SYMBOL:
-		w_make_atom(W_SYMBOL, string, stack, t, n)
-		break;
-	case WT_LSQUARE:
-		n = w_read_quot(r, n, stack);
-		break;
-	default:
-		return (NULL);
-	}
+	n->type = W_FIXNUM;
+	n->value.fixnum = value;
 
 	return (n);
 }
 
 struct w_node*
-w_read_quot(struct w_reader *r, struct w_node *n, struct w_node *stack)
+w_make_flonum(float value)
+{
+	struct w_node *n;
+
+	n = w_alloc_node();
+
+	n->type = W_FLONUM;
+	n->value.flonum = value;
+
+	return (n);
+}
+
+struct w_node*
+w_make_string(char *value)
+{
+	struct w_node *n;
+
+	n = w_alloc_node();
+
+	n->type = W_STRING;
+	n->value.string = value;
+
+	return (n);
+}
+
+struct w_node*
+w_make_symbol(char *value)
+{
+	struct w_node *n;
+
+	n = w_alloc_node();
+
+	n->type = W_SYMBOL;
+	n->value.string = value;
+
+	return (n);
+}
+
+struct w_node*
+w_push(struct w_node *n, struct w_node *stack)
+{
+	n->next = stack;
+	return (n);
+}
+
+struct w_node*
+w_read_quot(struct w_reader*);
+
+struct w_node*
+w_read_atom(struct w_reader *r, struct w_token t)
+{
+	switch (t.type)
+	{
+	case WT_FIXNUM:
+		return (w_make_fixnum(t.value.fixnum));
+	case WT_FLONUM:
+		return (w_make_flonum(t.value.flonum));
+	case WT_STRING:
+		return (w_make_string(t.value.string));
+	case WT_SYMBOL:
+		return (w_make_symbol(t.value.string));
+	case WT_LSQUARE:
+		return (w_read_quot(r));
+	default:
+		return (NULL);
+	}
+}
+
+struct w_node*
+w_read_quot(struct w_reader *r)
 {
 	struct w_token 	t;
+	struct w_node	*n;
+
+	n = w_alloc_node();
 
 	n->value.node 	= NULL;
 	n->type		= W_QUOT;
-	n->next 	= stack;
 
 	while (w_starts_atomp(t = w_read_token(r)))
 	{
-		n->value.node = w_read_atom(r, t, n->value.node);
+		n->value.node = w_push(w_read_atom(r, t),n->value.node);
 	}
 
 	return (n);
@@ -376,7 +424,7 @@ prompt:
 			}
 			goto prompt;
 		default:
-			stack = w_read_atom(&r, t, stack);
+			stack = w_push(w_read_atom(&r, t),stack);
 		}
 	}
 
