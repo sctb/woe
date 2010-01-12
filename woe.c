@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define w_spacep(x) (x == ' ' || x == '\t')
-#define w_starts_atomp(x) ((x).type <= WT_SYMBOL)
+#define W_SPACEP(x) (x == ' ' || x == '\t')
+#define W_STARTS_ATOMP(x) ((x).type <= WT_SYMBOL)
 
 enum w_token_type {
 	WT_STRING,
@@ -203,7 +203,7 @@ w_read_symbol(struct w_reader *r)
 
 	while ((c = w_read_char(r)) != '\0')
 	{
-		if (w_spacep(c) || c == '\n')
+		if (W_SPACEP(c) || c == '\n')
 		{
 			w_unread_char(r);
 			break;
@@ -228,7 +228,7 @@ w_read_token(struct w_reader *r)
 restart:
 	do {
 		c = w_read_char(r);
-	} while (w_spacep(c));
+	} while (W_SPACEP(c));
 
 	if (c == '(')
 	{
@@ -386,7 +386,7 @@ w_read_quot(struct w_reader *r)
 
 	l = NULL;
 
-	while (w_starts_atomp(t = w_read_token(r)))
+	while (W_STARTS_ATOMP(t = w_read_token(r)))
 		l = w_push(w_read_atom(r, t), l);
 
 	n->value.node = w_reverse(l);
