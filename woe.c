@@ -69,6 +69,19 @@ struct w_word {
 	struct w_word	*next;
 };
 
+struct w_node*
+w_alloc_node()
+{
+	return ((struct w_node*)malloc(sizeof(struct w_node)));
+}
+
+char*
+w_alloc_string(size_t len)
+{
+	return ((char*)malloc(sizeof(char)*len));
+}
+
+
 void
 w_init_reader(struct w_reader *r, FILE *stream)
 {
@@ -130,7 +143,7 @@ w_read_string(struct w_reader *r)
 	}
 
 	buffer[pos++] = '\0';
-	t.value.string = (char*)malloc(pos);
+	t.value.string = w_alloc_string(pos);
 	strncpy(t.value.string, buffer, pos);
 
 	return (t);
@@ -199,7 +212,7 @@ w_read_symbol(struct w_reader *r)
 	}
 
 	buffer[pos++] = '\0';
-	t.value.string = (char*)malloc(pos);
+	t.value.string = w_alloc_string(pos);
 	strncpy(t.value.string, buffer, pos);
 
 	return (t);
@@ -259,12 +272,6 @@ restart:
 			t = w_read_symbol(r);
 		return (t);
 	}
-}
-
-struct w_node*
-w_alloc_node()
-{
-	return ((struct w_node*)malloc(sizeof(struct w_node)));
 }
 
 struct w_node*
