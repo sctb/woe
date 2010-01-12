@@ -423,6 +423,10 @@ prompt:
 				printf(")\n");
 			}
 			goto prompt;
+		case WT_COLON:
+		case WT_SEMICOL:
+		case WT_RSQUARE:
+			break;
 		default:
 			stack = w_push(w_read_atom(&r, t),stack);
 		}
