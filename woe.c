@@ -397,6 +397,9 @@ w_read_quot(struct w_reader *r)
 void
 w_print(struct w_node* n)
 {
+	if (n == NULL)
+		return;
+
 	switch (n->type)
 	{
 	case W_STRING:
@@ -418,8 +421,7 @@ w_print(struct w_node* n)
 		break;
 	}
 
-	if (n->next != NULL)
-		w_print(n->next);
+	w_print(n->next);
 }
 
 int
@@ -442,12 +444,9 @@ prompt:
 		case WT_EOF:
 			return (0);
 		case WT_EOL:
-			if (stack != NULL)
-			{
-				printf("( ");
-				w_print(stack);
-				printf(")\n");
-			}
+			printf("( ");
+			w_print(stack);
+			printf(")\n");
 			goto prompt;
 		case WT_COLON:
 		case WT_SEMICOL:
