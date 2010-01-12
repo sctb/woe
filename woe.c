@@ -64,8 +64,8 @@ struct w_node {
 
 struct w_word {
 	char 		*name;
-	struct w_node 	*quot;
 	struct w_node	*(*builtin)(struct w_node*);
+	struct w_node 	*quot;
 	struct w_word	*next;
 };
 
@@ -327,9 +327,10 @@ w_make_symbol(char *value)
 }
 
 struct w_node*
-w_push(struct w_node *n, struct w_node *stack)
+w_push(struct w_node *n, struct w_node *o)
 {
-	n->next = stack;
+	n->next = o;
+
 	return (n);
 }
 
@@ -394,6 +395,18 @@ w_read_quot(struct w_reader *r)
 	return (n);
 }
 
+struct w_word*
+w_lookup(struct w_word *w, char *name)
+{
+	while (w != NULL) {
+		if (strcasecmp(w->name, name) == 0)
+			return w;
+		w = w->next;
+	}
+
+	return NULL;
+}
+
 void
 w_print(struct w_node *n)
 {
@@ -429,12 +442,12 @@ main(int argc, char *argv[])
 {
 	struct w_token 	t;
 	struct w_reader	r;
-	struct w_node	*stack;
+	struct w_node	*ret;
 
 	w_init_reader(&r, stdin);
 
 prompt:
-	stack = NULL;
+	ret = NULL;
 	printf("OK ");
 
 	while (1)
@@ -445,7 +458,7 @@ prompt:
 			return (0);
 		case WT_EOL:
 			printf("( ");
-			w_print(stack);
+			w_print(ret);
 			printf(")\n");
 			goto prompt;
 		case WT_COLON:
@@ -453,7 +466,7 @@ prompt:
 		case WT_RSQUARE:
 			break;
 		default:
-			stack = w_push(w_read_atom(&r, t),stack);
+			ret = w_push(w_read_atom(&r, t), ret);
 		}
 	}
 
