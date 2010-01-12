@@ -395,7 +395,7 @@ w_read_quot(struct w_reader *r)
 }
 
 void
-w_print(struct w_node* n)
+w_print(struct w_node *n)
 {
 	if (n == NULL)
 		return;
