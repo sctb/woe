@@ -334,6 +334,24 @@ w_push(struct w_node *n, struct w_node *stack)
 }
 
 struct w_node*
+w_reverse(struct w_node *n)
+{
+	struct w_node *r;
+	struct w_node *t;
+
+	r = NULL;
+
+	while (n) {
+		t = n->next;
+		n->next = r;
+		r = n;
+		n = t;
+	}
+
+	return (r);
+}
+
+struct w_node*
 w_read_quot(struct w_reader*);
 
 struct w_node*
@@ -361,16 +379,17 @@ w_read_quot(struct w_reader *r)
 {
 	struct w_token 	t;
 	struct w_node	*n;
+	struct w_node	*l;
 
-	n = w_alloc_node();
+	n 	= w_alloc_node();
+	n->type	= W_QUOT;
 
-	n->value.node 	= NULL;
-	n->type		= W_QUOT;
+	l = NULL;
 
 	while (w_starts_atomp(t = w_read_token(r)))
-	{
-		n->value.node = w_push(w_read_atom(r, t),n->value.node);
-	}
+		l = w_push(w_read_atom(r, t), l);
+
+	n->value.node = w_reverse(l);
 
 	return (n);
 }
