@@ -32,19 +32,19 @@ struct w_token {
 	union {
 		long	fixnum;
 		double	flonum;
-		char 	*string;
+		char	*string;
 	} value;
 };
 
 struct w_reader {
-	FILE 	*stream;
-	int 	buflen;
+	FILE	*stream;
+	int	buflen;
 	int	bufpos;
-	char 	buffer[1024];
+	char	buffer[1024];
 
 	/* unused */
-	int 	line;
-	int 	column;
+	int	line;
+	int	column;
 };
 
 enum w_type {
@@ -56,22 +56,22 @@ enum w_type {
 };
 
 union w_value {
-	long 	fixnum;
-	double 	flonum;
-	char 	*string;
-	struct 	w_node 	*node;
+	long	fixnum;
+	double	flonum;
+	char	*string;
+	struct	w_node	*node;
 };
 
 struct w_node {
-	enum 	w_type 	type;
-	union 	w_value	value;
-	struct 	w_node 	*next;
+	enum	w_type	type;
+	union	w_value	value;
+	struct	w_node	*next;
 };
 
 struct w_word {
-	char 		*name;
+	char		*name;
 	struct w_node	*(*builtin)(struct w_node*);
-	struct w_node 	*quot;
+	struct w_node	*quot;
 	struct w_word	*next;
 };
 
@@ -120,8 +120,8 @@ void
 w_init_reader(struct w_reader *r, FILE *stream)
 {
 	r->stream	= stream;
-	r->line 	= 1;
-	r->column 	= 0;
+	r->line		= 1;
+	r->column	= 0;
 	r->buflen	= 0;
 	r->bufpos	= 0;
 }
@@ -160,13 +160,13 @@ w_unread_char(struct w_reader *r)
 struct w_token
 w_read_string(struct w_reader *r)
 {
-	size_t 	pos;
-	char 	c;
-	char 	buffer[1024];
+	size_t	pos;
+	char	c;
+	char	buffer[1024];
 	struct	w_token t;
 
-	pos 	= 0;
-	t.type 	= WT_STRING;
+	pos	= 0;
+	t.type	= WT_STRING;
 
 	while ((c = w_read_char(r)) != '"') {
 		if (c == '\\') {
@@ -186,13 +186,13 @@ w_read_string(struct w_reader *r)
 struct w_token
 w_read_number(struct w_reader *r)
 {
-	size_t 	pos;
-	char 	c;
-	char 	buffer[1024];
+	size_t	pos;
+	char	c;
+	char	buffer[1024];
 	struct	w_token t;
 
-	pos 	= 0;
-	t.type 	= WT_SYMBOL;
+	pos	= 0;
+	t.type	= WT_SYMBOL;
 
 	while ((c = w_read_char(r)) != '\0')
 	{
@@ -227,12 +227,12 @@ w_read_number(struct w_reader *r)
 struct w_token
 w_read_symbol(struct w_reader *r)
 {
-	size_t 	pos;
-	char 	c;
-	char 	buffer[1024];
+	size_t	pos;
+	char	c;
+	char	buffer[1024];
 	struct	w_token t;
 
-	pos 	= 0;
+	pos	= 0;
 	t.type	= WT_SYMBOL;
 
 	while ((c = w_read_char(r)) != '\0')
@@ -255,8 +255,8 @@ w_read_symbol(struct w_reader *r)
 struct w_token
 w_read_token(struct w_reader *r)
 {
-	char 	c;
-	struct 	w_token t;
+	char	c;
+	struct	w_token t;
 
 restart:
 	do {
@@ -391,11 +391,11 @@ w_read_atom(struct w_reader *r, struct w_token t)
 struct w_node*
 w_read_quot(struct w_reader *r)
 {
-	struct w_token 	t;
+	struct w_token	t;
 	struct w_node	*n;
 	struct w_node	*l;
 
-	n 	= w_alloc_node();
+	n	= w_alloc_node();
 	n->type	= W_QUOT;
 
 	l = NULL;
@@ -562,7 +562,7 @@ w_eval(struct w_env *e)
 int
 main(int argc, char *argv[])
 {
-	struct w_token 	t;
+	struct w_token	t;
 	struct w_reader	r;
 	struct w_env	e;
 
