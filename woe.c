@@ -6,6 +6,12 @@
 #define W_SPACEP(x) (x == ' ' || x == '\t')
 #define W_STARTS_ATOMP(x) ((x).type <= WT_SYMBOL)
 
+#define W_MAKE_NODE(x, typ, fld, val)				\
+	struct w_node *x;					\
+	x		= w_alloc_node();			\
+	x->type		= typ;					\
+	x->value.fld	= val;					\
+
 enum w_token_type {
 	WT_STRING,
 	WT_FIXNUM,
@@ -304,12 +310,7 @@ restart:
 struct w_node*
 w_make_fixnum(long value)
 {
-	struct w_node *n;
-
-	n = w_alloc_node();
-
-	n->type = W_FIXNUM;
-	n->value.fixnum = value;
+	W_MAKE_NODE(n, W_FIXNUM, fixnum, value);
 
 	return (n);
 }
@@ -317,12 +318,7 @@ w_make_fixnum(long value)
 struct w_node*
 w_make_flonum(float value)
 {
-	struct w_node *n;
-
-	n = w_alloc_node();
-
-	n->type = W_FLONUM;
-	n->value.flonum = value;
+	W_MAKE_NODE(n, W_FLONUM, flonum, value);
 
 	return (n);
 }
@@ -330,12 +326,7 @@ w_make_flonum(float value)
 struct w_node*
 w_make_string(char *value)
 {
-	struct w_node *n;
-
-	n = w_alloc_node();
-
-	n->type = W_STRING;
-	n->value.string = value;
+	W_MAKE_NODE(n, W_STRING, string, value);
 
 	return (n);
 }
@@ -343,12 +334,7 @@ w_make_string(char *value)
 struct w_node*
 w_make_symbol(char *value)
 {
-	struct w_node *n;
-
-	n = w_alloc_node();
-
-	n->type = W_SYMBOL;
-	n->value.string = value;
+	W_MAKE_NODE(n, W_SYMBOL, string, value);
 
 	return (n);
 }
