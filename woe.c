@@ -340,29 +340,16 @@ w_make_symbol(char *value)
 }
 
 struct w_node*
-w_push(struct w_node *n, struct w_node *o)
+w_extend(struct w_node *n, struct w_node **h, struct w_node **o)
 {
-	n->next = o;
+	if (*h == NULL)
+		*h = n;
+	if (*o == NULL)
+		*o = n;
+	else
+		(*o)->next = n;
 
 	return (n);
-}
-
-struct w_node*
-w_reverse(struct w_node *n)
-{
-	struct w_node *r;
-	struct w_node *t;
-
-	r = NULL;
-
-	while (n) {
-		t = n->next;
-		n->next = r;
-		r = n;
-		n = t;
-	}
-
-	return (r);
 }
 
 struct w_node*
@@ -398,12 +385,8 @@ w_read_quot(struct w_reader *r)
 	n	= w_alloc_node();
 	n->type	= W_QUOT;
 
-	l = NULL;
-
 	while (W_STARTS_ATOMP(t = w_read_token(r)))
-		l = w_push(w_read_atom(r, t), l);
-
-	n->value.node = w_reverse(l);
+		l = w_extend(w_read_atom(r, t), &n->value.node, &l);
 
 	return (n);
 }
@@ -565,6 +548,7 @@ main(int argc, char *argv[])
 	struct w_token	t;
 	struct w_reader	r;
 	struct w_env	e;
+	struct w_node	*l;
 
 	w_init_reader(&r, stdin);
 	w_init_env(&e);
@@ -579,7 +563,6 @@ prompt:
 		case WT_EOF:
 			return (0);
 		case WT_EOL:
-			e.code = w_reverse(e.code);
 			w_eval(&e);
 			goto prompt;
 		case WT_COLON:
@@ -587,7 +570,7 @@ prompt:
 		case WT_RSQUARE:
 			break;
 		default:
-			e.code = w_push(w_read_atom(&r, t), e.code);
+			l = w_extend(w_read_atom(&r, t), &e.code, &l);
 		}
 	}
 
