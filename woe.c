@@ -69,10 +69,27 @@ struct w_word {
 	struct w_word	*next;
 };
 
+struct w_env {
+	struct w_node *data;
+	struct w_node *code;
+	struct w_word *dict;
+};
+
+struct w_builtin {
+	char		*name;
+	struct w_node	*(*builtin)(struct w_node*);
+};
+
 struct w_node*
 w_alloc_node()
 {
 	return ((struct w_node*)malloc(sizeof(struct w_node)));
+}
+
+struct w_word*
+w_alloc_word()
+{
+	return ((struct w_word*)malloc(sizeof(struct w_word)));
 }
 
 char*
@@ -81,6 +98,17 @@ w_alloc_string(size_t len)
 	return ((char*)malloc(sizeof(char)*len));
 }
 
+struct w_node*
+w_copy_node(struct w_node *o)
+{
+	struct w_node *n;
+
+	n		= w_alloc_node();
+	n->type		= o->type;
+	n->value	= o->value;
+
+	return (n);
+}
 
 void
 w_init_reader(struct w_reader *r, FILE *stream)
@@ -217,7 +245,6 @@ w_read_symbol(struct w_reader *r)
 
 	return (t);
 }
-
 
 struct w_token
 w_read_token(struct w_reader *r)
@@ -407,11 +434,43 @@ w_lookup(struct w_word *w, char *name)
 	return NULL;
 }
 
+struct w_node*
+w_swap(struct w_node *o)
+{
+	struct w_node *n;
+
+	n	= o->next;
+	o->next	= n->next;
+	n->next	= o;
+
+	return (n);
+}
+
+struct w_node*
+w_dup(struct w_node *o)
+{
+	struct w_node *n;
+
+	n		= w_copy_node(o);
+	n->next		= o;
+
+	return (n);
+}
+
+struct w_node*
+w_zap(struct w_node *n)
+{
+	return (n->next);
+}
+
 void
+w_print_node(struct w_node *n);
+
+struct w_node*
 w_print(struct w_node *n)
 {
 	if (n == NULL)
-		return;
+		return (n);
 
 	switch (n->type)
 	{
@@ -426,7 +485,7 @@ w_print(struct w_node *n)
 		break;
 	case W_QUOT:
 		printf("[ ");
-		w_print(n->value.node);
+		w_print_node(n->value.node);
 		printf("] ");
 		break;
 	case W_SYMBOL:
@@ -434,7 +493,84 @@ w_print(struct w_node *n)
 		break;
 	}
 
-	w_print(n->next);
+	return (n);
+}
+
+struct w_builtin initial_dict[] = {
+	{ "SWAP",	w_swap	},
+	{ "DUP",	w_dup	},
+	{ "ZAP",	w_zap	},
+	{ "PRINT",	w_print	}
+};
+
+void
+w_print_node(struct w_node *n)
+{
+	while (n != NULL) {
+		w_print(n);
+		n = n->next;
+	}
+}
+
+struct w_word*
+w_make_builtin_dict()
+{
+	int i, len;
+	struct w_word		*p;
+	struct w_word		*w;
+	struct w_builtin	*d;
+
+	len	= sizeof(initial_dict) / sizeof(initial_dict[0]);
+	d	= initial_dict;
+	p	= NULL;
+
+	for (i = 0; i < len; i++) {
+		w		= w_alloc_word();
+		w->name		= d[i].name;
+		w->builtin	= d[i].builtin;
+		w->next		= p;
+		p		= w;
+	}
+
+	return (w);
+}
+
+void
+w_init_env(struct w_env *e)
+{
+	e->data = NULL;
+	e->code = NULL;
+	e->dict = w_make_builtin_dict();
+}
+
+struct w_node*
+w_call(struct w_word *w, struct w_node *d)
+{
+	if (w->builtin != NULL)
+		return (w->builtin(d));
+	else
+		/* quotations not supported */
+		return (d);
+}
+
+void
+w_eval(struct w_env *e)
+{
+	struct w_node *n;
+	struct w_word *w;
+
+	while (e->code != NULL) {
+		if (e->code->type == W_SYMBOL) {
+			if ((w = w_lookup(e->dict, e->code->value.string)))
+				e->data = w_call(w, e->data);
+		} else {
+			n	= w_copy_node(e->code);
+			n->next	= e->data;
+			e->data	= n;
+		}
+
+		e->code	= e->code->next;
+	}
 }
 
 int
@@ -442,12 +578,12 @@ main(int argc, char *argv[])
 {
 	struct w_token 	t;
 	struct w_reader	r;
-	struct w_node	*ret;
+	struct w_env	e;
 
 	w_init_reader(&r, stdin);
+	w_init_env(&e);
 
 prompt:
-	ret = NULL;
 	printf("OK ");
 
 	while (1)
@@ -457,16 +593,15 @@ prompt:
 		case WT_EOF:
 			return (0);
 		case WT_EOL:
-			printf("( ");
-			w_print(ret);
-			printf(")\n");
+			e.code = w_reverse(e.code);
+			w_eval(&e);
 			goto prompt;
 		case WT_COLON:
 		case WT_SEMICOL:
 		case WT_RSQUARE:
 			break;
 		default:
-			ret = w_push(w_read_atom(&r, t), ret);
+			e.code = w_push(w_read_atom(&r, t), e.code);
 		}
 	}
 
