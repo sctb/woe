@@ -413,11 +413,11 @@ w_lookup(struct w_word *w, char *name)
 {
 	while (w != NULL) {
 		if (strcasecmp(w->name, name) == 0)
-			return w;
+			return (w);
 		w = w->next;
 	}
 
-	return NULL;
+	return (NULL);
 }
 
 struct w_node*
