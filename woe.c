@@ -379,11 +379,10 @@ struct w_node*
 w_read_quot(struct w_reader *r)
 {
 	struct w_token	t;
-	struct w_node	*n;
 	struct w_node	*l;
 
-	n	= w_alloc_node();
-	n->type	= W_QUOT;
+	W_MAKE_NODE(n, W_QUOT, node, NULL);
+	l = NULL;
 
 	while (W_STARTS_ATOMP(t = w_read_token(r)))
 		l = w_extend(w_read_atom(r, t), &n->value.node, &l);
