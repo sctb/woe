@@ -347,6 +347,13 @@ restart:
 	}
 }
 
+void
+w_runtime_error(struct w_env *e, char *msg)
+{
+	printf("ERROR: %s\n", msg);
+	e->code = NULL;
+}
+
 struct w_node*
 w_make_fixnum(long value)
 {
@@ -445,8 +452,11 @@ w_lookup(struct w_word *w, char *name)
 void
 w_call(struct w_word *w, struct w_env *e)
 {
-	if (w->builtin != NULL)
+	if (w->builtin != NULL) {
 		w->builtin(e);
+	} else {
+		w_runtime_error(e, "quotations are not supported");
+	}
 }
 
 void
@@ -460,6 +470,8 @@ w_eval(struct w_env *e)
 			if ((w = w_lookup(e->dict, e->code->value.string))) {
 				e->code	= e->code->next;
 				w_call(w, e);
+			} else {
+				w_runtime_error(e, "undefined word");
 			}
 		} else {
 			n	= w_copy_node(e->code);
@@ -476,10 +488,14 @@ w_swap(struct w_env *e)
 {
 	struct w_node *n;
 
-	n		= e->data->next;
-	e->data->next	= n->next;
-	n->next		= e->data;
-	e->data		= n;
+	if (e->data != NULL && e->data->next != NULL) {
+		n		= e->data->next;
+		e->data->next	= n->next;
+		n->next		= e->data;
+		e->data		= n;
+	} else {
+		w_runtime_error(e, "stack underflow");
+	}
 }
 
 void
@@ -488,16 +504,24 @@ w_dup(struct w_env *e)
 {
 	struct w_node *n;
 
-	n		= w_copy_node(e->data);
-	n->next		= e->data;
-	e->data		= n;
+	if (e->data != NULL) {
+		n		= w_copy_node(e->data);
+		n->next		= e->data;
+		e->data		= n;
+	} else {
+		w_runtime_error(e, "stack underflow");
+	}
 }
 
 void
 w_zap(struct w_env *e)
 /* [B] [A] zap => [B] */
 {
-	e->data = e->data->next;
+	if (e->data != NULL) {
+		e->data = e->data->next;
+	} else {
+		w_runtime_error(e, "stack underflow");
+	}
 }
 
 void
@@ -506,17 +530,24 @@ w_cat(struct w_env *e)
 {
 	struct w_node *l;
 
-	if (e->data->type == W_QUOT && e->data->next->type == W_QUOT) {
-		l = e->data->next->value.node;
+	if (e->data != NULL && e->data->next != NULL) {
+		if (e->data->type	== W_QUOT &&
+		    e->data->next->type	== W_QUOT) {
+			l = e->data->next->value.node;
 
-		if (l != NULL) {
-			while (l->next != NULL)
-				l = l->next;
+			if (l != NULL) {
+				while (l->next != NULL)
+					l = l->next;
 
-			l->next = e->data->value.node;
+				l->next = e->data->value.node;
+			}
+
+			w_zap(e);
+		} else {
+			w_runtime_error(e, "cat requires two quotations");
 		}
-
-		w_zap(e);
+	} else {
+		w_runtime_error(e, "stack underflow");
 	}
 }
 
@@ -526,11 +557,17 @@ w_cons(struct w_env *e)
 {
 	struct w_node *b;
 
-	if (e->data->type == W_QUOT) {
-		b			= e->data->next;
-		e->data->next		= e->data->next->next;
-		b->next			= e->data->value.node;
-		e->data->value.node	= b;
+	if (e->data != NULL && e->data->next != NULL) {
+		if (e->data->type == W_QUOT) {
+			b			= e->data->next;
+			e->data->next		= e->data->next->next;
+			b->next			= e->data->value.node;
+			e->data->value.node	= b;
+		} else {
+			w_runtime_error(e, "cons requires a quotation");
+		}
+	} else {
+		w_runtime_error(e, "stack underflow");
 	}
 }
 
@@ -540,30 +577,38 @@ w_unit(struct w_env *e)
 {
 	W_MAKE_NODE(q, W_QUOT, node, NULL);
 
-	q->value.node	= e->data;
-	q->next		= e->data->next;
-	e->data->next	= NULL;
+	if (e->data != NULL) {
+		q->value.node	= e->data;
+		q->next		= e->data->next;
+		e->data->next	= NULL;
 
-	e->data		= q;
+		e->data		= q;
+	} else {
+		w_runtime_error(e, "stack underflow");
+	}
 }
 
 void
 w_i(struct w_env *e)
 /* [A] i => A */
 {
-	struct w_node *l;
+	struct w_env i;
 
-	if (e->data->type == W_QUOT) {
-		l = e->data->value.node;
+	if (e->data != NULL) {
+		if (e->data->type == W_QUOT) {
+			i.code	= e->data->value.node;
+			e->data	= e->data->next;
+			i.data	= e->data;
+			i.dict	= e->dict;
 
-		while (l->next != NULL)
-			l = l->next;
+			w_eval(&i);
 
-		l->next = e->code;
-		e->code = e->data->value.node;
-		e->data = e->data->next;
-
-		w_eval(e);
+			e->data	= i.data;
+		} else {
+			w_runtime_error(e, "i requires a quotation");
+		}
+	} else {
+		w_runtime_error(e, "stack underflow");
 	}
 }
 
@@ -571,24 +616,27 @@ void
 w_dip(struct w_env *e)
 /* [B] [A] dip => A [B] */
 {
-	struct w_node *l;
-	struct w_node *t;
+	struct w_env	i;
+	struct w_node	*t;
 
-	if (e->data->type == W_QUOT) {
-		t = e->data->next;
-		l = e->data->value.node;
+	if (e->data != NULL && e->data->next != NULL) {
+		if (e->data->type == W_QUOT) {
+			t = e->data->next;
 
-		while (l->next != NULL)
-			l = l->next;
+			i.code	= e->data->value.node;
+			e->data	= e->data->next->next;
+			i.data	= e->data;
+			i.dict	= e->dict;
 
-		l->next = e->code;
-		e->code = e->data->value.node;
-		e->data = e->data->next->next;
+			w_eval(&i);
 
-		w_eval(e);
-
-		t->next = e->data;
-		e->data = t;
+			t->next = i.data;
+			e->data = t;
+		} else {
+			w_runtime_error(e, "dip requires a quotation");
+		}
+	} else {
+		w_runtime_error(e, "stack underflow");
 	}
 }
 
