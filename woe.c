@@ -68,22 +68,22 @@ struct w_node {
 	struct	w_node	*next;
 };
 
-struct w_word {
-	char		*name;
-	struct w_node	*(*builtin)(struct w_node*);
-	struct w_node	*quot;
-	struct w_word	*next;
-};
-
 struct w_env {
 	struct w_node *data;
 	struct w_node *code;
 	struct w_word *dict;
 };
 
-struct w_builtin {
+struct w_word {
 	char		*name;
-	struct w_node	*(*builtin)(struct w_node*);
+	void		(*builtin)(struct w_env*);
+	struct w_node	*quot;
+	struct w_word	*next;
+};
+
+struct w_builtin {
+	char *name;
+	void (*builtin)(struct w_env*);
 };
 
 struct w_node*
@@ -114,6 +114,46 @@ w_copy_node(struct w_node *o)
 	n->value	= o->value;
 
 	return (n);
+}
+
+void
+w_pn(struct w_node *n);
+
+void
+w_p(struct w_node *n)
+{
+	if (n == NULL)
+		return;
+
+	switch (n->type)
+	{
+	case W_STRING:
+		printf("\"%s\" ", n->value.string);
+		break;
+	case W_FIXNUM:
+		printf("%ld ", n->value.fixnum);
+		break;
+	case W_FLONUM:
+		printf("%.2f ", n->value.flonum);
+		break;
+	case W_QUOT:
+		printf("[ ");
+		w_pn(n->value.node);
+		printf("] ");
+		break;
+	case W_SYMBOL:
+		printf("%s ", n->value.string);
+		break;
+	}
+}
+
+void
+w_pn(struct w_node *n)
+{
+	while (n != NULL) {
+		w_p(n);
+		n = n->next;
+	}
 }
 
 void
@@ -402,120 +442,87 @@ w_lookup(struct w_word *w, char *name)
 	return (NULL);
 }
 
-struct w_node*
-w_swap(struct w_node *o)
+void
+w_swap(struct w_env *e)
 /* [B] [A] swap => [A] [B] */
 {
 	struct w_node *n;
 
-	n	= o->next;
-	o->next	= n->next;
-	n->next	= o;
-
-	return (n);
+	n		= e->data->next;
+	e->data->next	= n->next;
+	n->next		= e->data;
+	e->data		= n;
 }
 
-struct w_node*
-w_dup(struct w_node *o)
+void
+w_dup(struct w_env *e)
 /* [A] dup => [A] [A] */
 {
 	struct w_node *n;
 
-	n		= w_copy_node(o);
-	n->next		= o;
-
-	return (n);
+	n		= w_copy_node(e->data);
+	n->next		= e->data;
+	e->data		= n;
 }
 
-struct w_node*
-w_zap(struct w_node *n)
+void
+w_zap(struct w_env *e)
 /* [B] [A] zap => [B] */
 {
-	return (n->next);
+	e->data = e->data->next;
 }
 
-struct w_node*
-w_cat(struct w_node *n)
+void
+w_cat(struct w_env *e)
 /* [B] [A] cat => [B A] */
 {
 	struct w_node *l;
 
-	if (n->type == W_QUOT && n->next->type == W_QUOT) {
-		l = n->next->value.node;
+	if (e->data->type == W_QUOT && e->data->next->type == W_QUOT) {
+		l = e->data->next->value.node;
 
 		if (l != NULL) {
 			while (l->next != NULL)
 				l = l->next;
 
-			l->next = n->value.node;
+			l->next = e->data->value.node;
 		}
 
-		return (w_zap(n));
+		w_zap(e);
 	}
-
-	return (n);
 }
 
-struct w_node*
-w_cons(struct w_node *n)
+void
+w_cons(struct w_env *e)
 /* [B] [A] cons => [[B] A] */
 {
 	struct w_node *b;
 
-	if (n->type == W_QUOT) {
-		b		= n->next;
-		n->next		= n->next->next;
-		b->next		= n->value.node;
-		n->value.node	= b;
+	if (e->data->type == W_QUOT) {
+		b			= e->data->next;
+		e->data->next		= e->data->next->next;
+		b->next			= e->data->value.node;
+		e->data->value.node	= b;
 	}
-
-	return (n);
 }
 
-struct w_node*
-w_unit(struct w_node *n)
+void
+w_unit(struct w_env *e)
 /* [A] unit => [[A]] */
 {
 	W_MAKE_NODE(q, W_QUOT, node, NULL);
 
-	q->value.node	= n;
-	q->next		= n->next;
-	n->next		= NULL;
+	q->value.node	= e->data;
+	q->next		= e->data->next;
+	e->data->next   = NULL;
 
-	return (q);
+	e->data		= q;
 }
 
 void
-w_print_node(struct w_node *n);
-
-struct w_node*
-w_print(struct w_node *n)
+w_print(struct w_env *e)
 {
-	if (n == NULL)
-		return (n);
-
-	switch (n->type)
-	{
-	case W_STRING:
-		printf("\"%s\" ", n->value.string);
-		break;
-	case W_FIXNUM:
-		printf("%ld ", n->value.fixnum);
-		break;
-	case W_FLONUM:
-		printf("%.2f ", n->value.flonum);
-		break;
-	case W_QUOT:
-		printf("[ ");
-		w_print_node(n->value.node);
-		printf("] ");
-		break;
-	case W_SYMBOL:
-		printf("%s ", n->value.string);
-		break;
-	}
-
-	return (n);
+	w_p(e->data);
 }
 
 struct w_builtin initial_dict[] = {
@@ -527,15 +534,6 @@ struct w_builtin initial_dict[] = {
 	{ "UNIT",	w_unit	},
 	{ "PRINT",	w_print	}
 };
-
-void
-w_print_node(struct w_node *n)
-{
-	while (n != NULL) {
-		w_print(n);
-		n = n->next;
-	}
-}
 
 struct w_word*
 w_make_builtin_dict()
@@ -568,14 +566,11 @@ w_init_env(struct w_env *e)
 	e->dict = w_make_builtin_dict();
 }
 
-struct w_node*
-w_call(struct w_word *w, struct w_node *d)
+void
+w_call(struct w_word *w, struct w_env *e)
 {
 	if (w->builtin != NULL)
-		return (w->builtin(d));
-	else
-		/* quotations not supported */
-		return (d);
+		w->builtin(e);
 }
 
 void
@@ -587,7 +582,7 @@ w_eval(struct w_env *e)
 	while (e->code != NULL) {
 		if (e->code->type == W_SYMBOL) {
 			if ((w = w_lookup(e->dict, e->code->value.string)))
-				e->data = w_call(w, e->data);
+				w_call(w, e);
 		} else {
 			n	= w_copy_node(e->code);
 			n->next	= e->data;
