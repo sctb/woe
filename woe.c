@@ -404,6 +404,7 @@ w_lookup(struct w_word *w, char *name)
 
 struct w_node*
 w_swap(struct w_node *o)
+/* [B] [A] swap => [A] [B] */
 {
 	struct w_node *n;
 
@@ -416,6 +417,7 @@ w_swap(struct w_node *o)
 
 struct w_node*
 w_dup(struct w_node *o)
+/* [A] dup => [A] [A] */
 {
 	struct w_node *n;
 
@@ -427,8 +429,60 @@ w_dup(struct w_node *o)
 
 struct w_node*
 w_zap(struct w_node *n)
+/* [B] [A] zap => [B] */
 {
 	return (n->next);
+}
+
+struct w_node*
+w_cat(struct w_node *n)
+/* [B] [A] cat => [B A] */
+{
+	struct w_node *l;
+
+	if (n->type == W_QUOT && n->next->type == W_QUOT) {
+		l = n->next->value.node;
+
+		if (l != NULL) {
+			while (l->next != NULL)
+				l = l->next;
+
+			l->next = n->value.node;
+		}
+
+		return (w_zap(n));
+	}
+
+	return (n);
+}
+
+struct w_node*
+w_cons(struct w_node *n)
+/* [B] [A] cons => [[B] A] */
+{
+	struct w_node *b;
+
+	if (n->type == W_QUOT) {
+		b		= n->next;
+		n->next		= n->next->next;
+		b->next		= n->value.node;
+		n->value.node	= b;
+	}
+
+	return (n);
+}
+
+struct w_node*
+w_unit(struct w_node *n)
+/* [A] unit => [[A]] */
+{
+	W_MAKE_NODE(q, W_QUOT, node, NULL);
+
+	q->value.node	= n;
+	q->next		= n->next;
+	n->next		= NULL;
+
+	return (q);
 }
 
 void
@@ -468,6 +522,9 @@ struct w_builtin initial_dict[] = {
 	{ "SWAP",	w_swap	},
 	{ "DUP",	w_dup	},
 	{ "ZAP",	w_zap	},
+	{ "CAT",	w_cat	},
+	{ "CONS",	w_cons	},
+	{ "UNIT",	w_unit	},
 	{ "PRINT",	w_print	}
 };
 
