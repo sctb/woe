@@ -514,8 +514,8 @@ w_dup(struct w_env *e)
 }
 
 void
-w_zap(struct w_env *e)
-/* [B] [A] zap => [B] */
+w_pop(struct w_env *e)
+/* [B] [A] pop => [B] */
 {
 	if (e->data != NULL) {
 		e->data = e->data->next;
@@ -542,7 +542,7 @@ w_cat(struct w_env *e)
 				l->next = e->data->value.node;
 			}
 
-			w_zap(e);
+			w_pop(e);
 		} else {
 			w_runtime_error(e, "cat requires two quotations");
 		}
@@ -649,7 +649,7 @@ w_print(struct w_env *e)
 struct w_builtin initial_dict[] = {
 	{ "SWAP",	w_swap	},
 	{ "DUP",	w_dup	},
-	{ "ZAP",	w_zap	},
+	{ "POP",	w_pop	},
 	{ "CAT",	w_cat	},
 	{ "CONS",	w_cons	},
 	{ "UNIT",	w_unit	},
