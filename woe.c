@@ -443,6 +443,34 @@ w_lookup(struct w_word *w, char *name)
 }
 
 void
+w_call(struct w_word *w, struct w_env *e)
+{
+	if (w->builtin != NULL)
+		w->builtin(e);
+}
+
+void
+w_eval(struct w_env *e)
+{
+	struct w_node *n;
+	struct w_word *w;
+
+	while (e->code != NULL) {
+		if (e->code->type == W_SYMBOL) {
+			if ((w = w_lookup(e->dict, e->code->value.string))) {
+				e->code	= e->code->next;
+				w_call(w, e);
+			}
+		} else {
+			n	= w_copy_node(e->code);
+			n->next	= e->data;
+			e->data	= n;
+			e->code	= e->code->next;
+		}
+	}
+}
+
+void
 w_swap(struct w_env *e)
 /* [B] [A] swap => [A] [B] */
 {
@@ -520,6 +548,51 @@ w_unit(struct w_env *e)
 }
 
 void
+w_i(struct w_env *e)
+/* [A] i => A */
+{
+	struct w_node *l;
+
+	if (e->data->type == W_QUOT) {
+		l = e->data->value.node;
+
+		while (l->next != NULL)
+			l = l->next;
+
+		l->next = e->code;
+		e->code = e->data->value.node;
+		e->data = e->data->next;
+
+		w_eval(e);
+	}
+}
+
+void
+w_dip(struct w_env *e)
+/* [B] [A] dip => A [B] */
+{
+	struct w_node *l;
+	struct w_node *t;
+
+	if (e->data->type == W_QUOT) {
+		t = e->data->next;
+		l = e->data->value.node;
+
+		while (l->next != NULL)
+			l = l->next;
+
+		l->next = e->code;
+		e->code = e->data->value.node;
+		e->data = e->data->next->next;
+
+		w_eval(e);
+
+		t->next = e->data;
+		e->data = t;
+	}
+}
+
+void
 w_print(struct w_env *e)
 {
 	w_p(e->data);
@@ -532,6 +605,8 @@ struct w_builtin initial_dict[] = {
 	{ "CAT",	w_cat	},
 	{ "CONS",	w_cons	},
 	{ "UNIT",	w_unit	},
+	{ "I",		w_i	},
+	{ "DIP",	w_dip	},
 	{ "PRINT",	w_print	}
 };
 
@@ -564,33 +639,6 @@ w_init_env(struct w_env *e)
 	e->data = NULL;
 	e->code = NULL;
 	e->dict = w_make_builtin_dict();
-}
-
-void
-w_call(struct w_word *w, struct w_env *e)
-{
-	if (w->builtin != NULL)
-		w->builtin(e);
-}
-
-void
-w_eval(struct w_env *e)
-{
-	struct w_node *n;
-	struct w_word *w;
-
-	while (e->code != NULL) {
-		if (e->code->type == W_SYMBOL) {
-			if ((w = w_lookup(e->dict, e->code->value.string)))
-				w_call(w, e);
-		} else {
-			n	= w_copy_node(e->code);
-			n->next	= e->data;
-			e->data	= n;
-		}
-
-		e->code	= e->code->next;
-	}
 }
 
 int
