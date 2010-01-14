@@ -13,6 +13,9 @@
 	x->value.fld	= val;					\
 
 enum w_token_type {
+	WT_EOL,
+	WT_EOF,
+
 	WT_STRING,
 	WT_FIXNUM,
 	WT_FLONUM,
@@ -21,10 +24,7 @@ enum w_token_type {
 
 	WT_COLON,
 	WT_SEMICOL,
-	WT_RSQUARE,
-
-	WT_EOL,
-	WT_EOF
+	WT_RSQUARE
 };
 
 struct w_token {
@@ -348,6 +348,12 @@ restart:
 }
 
 void
+w_read_error(char *msg)
+{
+	printf("READ ERROR: %s\n", msg);
+}
+
+void
 w_runtime_error(struct w_env *e, char *msg)
 {
 	printf("ERROR: %s\n", msg);
@@ -431,10 +437,37 @@ w_read_quot(struct w_reader *r)
 	W_MAKE_NODE(n, W_QUOT, node, NULL);
 	l = NULL;
 
-	while (W_STARTS_ATOMP(t = w_read_token(r)))
-		l = w_extend(w_read_atom(r, t), &n->value.node, &l);
+	while (W_STARTS_ATOMP(t = w_read_token(r))) {
+		if (t.type == WT_EOF) {
+			w_read_error("unexpected end-of-file");
+
+			return (NULL);
+		}
+		if (t.type != WT_EOL)
+			l = w_extend(w_read_atom(r, t), &n->value.node, &l);
+	}
 
 	return (n);
+}
+
+struct w_word*
+w_read_def(struct w_reader *r)
+{
+	struct w_token	t;
+	struct w_word	*w;
+
+	w = w_alloc_word();
+
+	if ((t = w_read_token(r)).type == WT_SYMBOL) {
+		w->name	= t.value.string;
+		w->quot	= w_read_quot(r);
+
+		return (w);
+	} else {
+		w_read_error("expected word name after ':'");
+
+		return (NULL);
+	}
 }
 
 struct w_word*
@@ -449,13 +482,23 @@ w_lookup(struct w_word *w, char *name)
 	return (NULL);
 }
 
+void w_eval(struct w_env*);
+
 void
 w_call(struct w_word *w, struct w_env *e)
 {
+	struct w_env i;
+
 	if (w->builtin != NULL) {
 		w->builtin(e);
 	} else {
-		w_runtime_error(e, "quotations are not supported");
+		i.data = e->data;
+		i.dict = e->dict;
+		i.code = w->quot->value.node;
+
+		w_eval(&i);
+
+		e->data	= i.data;
 	}
 }
 
@@ -696,10 +739,12 @@ main(int argc, char *argv[])
 	struct w_reader	r;
 	struct w_env	e;
 	struct w_node	*l;
+	struct w_word	*w;
 
 	w_init_reader(&r, stdin);
 	w_init_env(&e);
 
+	l = NULL;
 prompt:
 	printf("OK ");
 
@@ -713,6 +758,11 @@ prompt:
 			w_eval(&e);
 			goto prompt;
 		case WT_COLON:
+			if ((w = w_read_def(&r)) != NULL) {
+				w->next	= e.dict;
+				e.dict	= w;
+			}
+			break;
 		case WT_SEMICOL:
 		case WT_RSQUARE:
 			break;
