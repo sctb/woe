@@ -542,7 +542,7 @@ w_unit(struct w_env *e)
 
 	q->value.node	= e->data;
 	q->next		= e->data->next;
-	e->data->next   = NULL;
+	e->data->next	= NULL;
 
 	e->data		= q;
 }
