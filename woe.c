@@ -277,7 +277,7 @@ w_read_symbol(struct w_reader *r)
 
 	while ((c = w_read_char(r)) != '\0')
 	{
-		if (W_SPACEP(c) || c == '\n')
+		if (W_SPACEP(c) || c == '\n' || strchr("[]:;", c))
 		{
 			w_unread_char(r);
 			break;
