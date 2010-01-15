@@ -53,7 +53,7 @@
 #define W_PROMOTE_TO_FLONUM(n)						\
 	if (n->type == W_FIXNUM) {					\
 		n->type		= W_FLONUM;				\
-		n->value.flonum = (float)n->value.fixnum;		\
+		n->value.flonum = (double)n->value.fixnum;		\
 	}								\
 
 #define W_PROMOTE_BINARY_NUMERIC(r, e)					\
@@ -433,7 +433,7 @@ w_make_fixnum(long value)
 }
 
 struct w_node*
-w_make_flonum(float value)
+w_make_flonum(double value)
 {
 	W_MAKE_NODE(n, W_FLONUM, flonum, value);
 
