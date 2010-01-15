@@ -43,6 +43,39 @@
 		return;							\
 	}								\
 
+#define W_ASSERT_TWO_NUMERIC(e)						\
+	if ((D1(e)->type != W_FIXNUM && D1(e)->type != W_FLONUM) ||	\
+	    (D2(e)->type != W_FIXNUM && D2(e)->type != W_FLONUM)) {	\
+		w_runtime_error(e, "expected two numbers");		\
+		return;							\
+	}								\
+
+#define W_PROMOTE_TO_FLONUM(n)						\
+	if (n->type == W_FIXNUM) {					\
+		n->type		= W_FLONUM;				\
+		n->value.flonum = (float)n->value.fixnum;		\
+	}								\
+
+#define W_PROMOTE_BINARY_NUMERIC(r, e)					\
+	if (D1(e)->type == W_FLONUM || D2(e)->type == W_FLONUM) {	\
+		W_PROMOTE_TO_FLONUM(r);					\
+		W_PROMOTE_TO_FLONUM(D1(e));				\
+		W_PROMOTE_TO_FLONUM(D2(e));				\
+	}								\
+
+#define W_BINARY_NUMERIC_OP(e, op)					\
+	W_MAKE_NODE(_r, W_FIXNUM, fixnum, 0);				\
+	W_ASSERT_TWO_NUMERIC(e);					\
+	W_PROMOTE_BINARY_NUMERIC(_r, e);				\
+	if (_r->type == W_FLONUM)					\
+		_r->value.flonum = D1(e)->value.flonum			\
+			op D2(e)->value.flonum;				\
+	else								\
+		_r->value.fixnum = D1(e)->value.fixnum			\
+			op D2(e)->value.fixnum;				\
+	_r->next = D3(e);						\
+	D1(e) = _r;							\
+
 enum w_token_type {
 	WT_EOL,
 	WT_EOF,
@@ -685,21 +718,49 @@ w_dip(struct w_env *e)
 }
 
 void
+w_add(struct w_env *e)
+{
+	W_BINARY_NUMERIC_OP(e, +);
+}
+
+void
+w_subtract(struct w_env *e)
+{
+	W_BINARY_NUMERIC_OP(e, -);
+}
+
+void
+w_multiply(struct w_env *e)
+{
+	W_BINARY_NUMERIC_OP(e, *);
+}
+
+void
+w_divide(struct w_env *e)
+{
+	W_BINARY_NUMERIC_OP(e, /);
+}
+
+void
 w_print(struct w_env *e)
 {
 	w_p(D1(e));
 }
 
 struct w_builtin initial_dict[] = {
-	{ "SWAP",	w_swap	},
-	{ "DUP",	w_dup	},
-	{ "POP",	w_pop	},
-	{ "CAT",	w_cat	},
-	{ "CONS",	w_cons	},
-	{ "UNIT",	w_unit	},
-	{ "I",		w_i	},
-	{ "DIP",	w_dip	},
-	{ "PRINT",	w_print	}
+	{ "SWAP",	w_swap		},
+	{ "DUP",	w_dup		},
+	{ "POP",	w_pop		},
+	{ "CAT",	w_cat		},
+	{ "CONS",	w_cons		},
+	{ "UNIT",	w_unit		},
+	{ "I",		w_i		},
+	{ "DIP",	w_dip		},
+	{ "+",		w_add		},
+	{ "-",		w_subtract	},
+	{ "*",		w_multiply	},
+	{ "/",		w_divide	},
+	{ "PRINT",	w_print		}
 };
 
 struct w_word*
