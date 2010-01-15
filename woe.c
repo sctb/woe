@@ -63,7 +63,7 @@
 		n->value.flonum = (double)n->value.fixnum;		\
 	}								\
 
-#define W_PROMOTE_BINARY_NUMERIC(r, e)					\
+#define W_NORMALIZE_BINARY_NUMERIC(r, e)				\
 	if (D1(e)->type == W_FLONUM || D2(e)->type == W_FLONUM) {	\
 		W_PROMOTE_TO_FLONUM(r);					\
 		W_PROMOTE_TO_FLONUM(D1(e));				\
@@ -74,7 +74,7 @@
 	W_MAKE_NODE(_r, W_FIXNUM, fixnum, 0);				\
 	W_ASSERT_TWO_ARGS(e);						\
 	W_ASSERT_TWO_NUMERIC(e);					\
-	W_PROMOTE_BINARY_NUMERIC(_r, e);				\
+	W_NORMALIZE_BINARY_NUMERIC(_r, e);				\
 	if (_r->type == W_FLONUM)					\
 		_r->value.flonum = D2(e)->value.flonum			\
 			op D1(e)->value.flonum;				\
@@ -755,7 +755,7 @@ w_mod(struct w_env *e)
 	W_MAKE_NODE(r, W_FIXNUM, fixnum, 0);
 	W_ASSERT_TWO_ARGS(e);
 	W_ASSERT_TWO_NUMERIC(e);
-	W_PROMOTE_BINARY_NUMERIC(r, e);
+	W_NORMALIZE_BINARY_NUMERIC(r, e);
 
 	if (r->type == W_FLONUM)
 		r->value.flonum = fmod(D2(e)->value.flonum,
