@@ -6,6 +6,13 @@
 #define W_SPACEP(x) (x == ' ' || x == '\t')
 #define W_STARTS_ATOMP(x) ((x).type <= WT_SYMBOL)
 
+#define D1(e) e->data
+#define D2(e) e->data->next
+#define D3(e) e->data->next->next
+
+#define C1(e) e->code
+#define C2(e) e->code->next
+
 #define W_MAKE_NODE(x, typ, fld, val)					\
 	struct w_node *x;						\
 	x		= w_alloc_node();				\
@@ -13,25 +20,25 @@
 	x->value.fld	= val;						\
 
 #define W_ASSERT_ONE_ARG(e)						\
-	if (e->data == NULL) {						\
+	if (D1(e) == NULL) {						\
 		w_runtime_error(e, "stack underflow");			\
 		return;							\
 	}								\
 
 #define W_ASSERT_TWO_ARGS(e)						\
-	if (e->data == NULL || e->data->next == NULL) {			\
+	if (D1(e) == NULL || D2(e) == NULL) {				\
 		w_runtime_error(e, "stack underflow");			\
 		return;							\
 	}								\
 
 #define W_ASSERT_ONE_QUOT(e)						\
-	if (e->data->type != W_QUOT) {					\
+	if (D1(e)->type != W_QUOT) {					\
 		w_runtime_error(e, "expected one quotation");		\
 		return;							\
 	}								\
 
 #define W_ASSERT_TWO_QUOT(e)						\
-	if (e->data->type != W_QUOT || e->data->next->type != W_QUOT) {	\
+	if (D1(e)->type != W_QUOT || D2(e)->type != W_QUOT) {		\
 		w_runtime_error(e, "expected two quotations");		\
 		return;							\
 	}								\
@@ -381,7 +388,7 @@ void
 w_runtime_error(struct w_env *e, char *msg)
 {
 	printf("ERROR: %s\n", msg);
-	e->code = NULL;
+	C1(e) = NULL;
 }
 
 struct w_node*
@@ -516,13 +523,13 @@ w_call(struct w_word *w, struct w_env *e)
 	if (w->builtin != NULL) {
 		w->builtin(e);
 	} else {
-		i.data = e->data;
+		i.data = D1(e);
 		i.dict = e->dict;
 		i.code = w->quot->value.node;
 
 		w_eval(&i);
 
-		e->data	= i.data;
+		D1(e)	= i.data;
 	}
 }
 
@@ -532,19 +539,19 @@ w_eval(struct w_env *e)
 	struct w_node *n;
 	struct w_word *w;
 
-	while (e->code != NULL) {
-		if (e->code->type == W_SYMBOL) {
-			if ((w = w_lookup(e->dict, e->code->value.string))) {
-				e->code	= e->code->next;
+	while (C1(e) != NULL) {
+		if (C1(e)->type == W_SYMBOL) {
+			if ((w = w_lookup(e->dict, C1(e)->value.string))) {
+				C1(e) = C2(e);
 				w_call(w, e);
 			} else {
 				w_runtime_error(e, "undefined word");
 			}
 		} else {
-			n	= w_copy_node(e->code);
-			n->next	= e->data;
-			e->data	= n;
-			e->code	= e->code->next;
+			n	= w_copy_node(C1(e));
+			n->next	= D1(e);
+			D1(e)	= n;
+			C1(e)	= C2(e);
 		}
 	}
 }
@@ -557,10 +564,10 @@ w_swap(struct w_env *e)
 
 	W_ASSERT_TWO_ARGS(e);
 
-	n		= e->data->next;
-	e->data->next	= n->next;
-	n->next		= e->data;
-	e->data		= n;
+	n	= D2(e);
+	D2(e)	= n->next;
+	n->next	= D1(e);
+	D1(e)	= n;
 }
 
 void
@@ -571,9 +578,9 @@ w_dup(struct w_env *e)
 
 	W_ASSERT_ONE_ARG(e);
 
-	n	= w_copy_node(e->data);
-	n->next	= e->data;
-	e->data	= n;
+	n	= w_copy_node(D1(e));
+	n->next	= D1(e);
+	D1(e)	= n;
 }
 
 void
@@ -582,7 +589,7 @@ w_pop(struct w_env *e)
 {
 	W_ASSERT_ONE_ARG(e);
 
-	e->data = e->data->next;
+	D1(e) = D2(e);
 }
 
 void
@@ -594,13 +601,13 @@ w_cat(struct w_env *e)
 	W_ASSERT_TWO_ARGS(e);
 	W_ASSERT_TWO_QUOT(e);
 
-	l = e->data->next->value.node;
+	l = D2(e)->value.node;
 
 	if (l != NULL) {
 		while (l->next != NULL)
 			l = l->next;
 
-		l->next = e->data->value.node;
+		l->next = D1(e)->value.node;
 	}
 
 	w_pop(e);
@@ -615,10 +622,10 @@ w_cons(struct w_env *e)
 	W_ASSERT_TWO_ARGS(e);
 	W_ASSERT_ONE_QUOT(e);
 
-	b			= e->data->next;
-	e->data->next		= e->data->next->next;
-	b->next			= e->data->value.node;
-	e->data->value.node	= b;
+	b			= D2(e);
+	D2(e)			= D3(e);
+	b->next			= D1(e)->value.node;
+	D1(e)->value.node	= b;
 }
 
 void
@@ -629,10 +636,10 @@ w_unit(struct w_env *e)
 
 	W_ASSERT_ONE_ARG(e);
 
-	q->value.node	= e->data;
-	q->next		= e->data->next;
-	e->data->next	= NULL;
-	e->data		= q;
+	q->value.node	= D1(e);
+	q->next		= D2(e);
+	D2(e)		= NULL;
+	D1(e)		= q;
 }
 
 void
@@ -644,14 +651,14 @@ w_i(struct w_env *e)
 	W_ASSERT_ONE_ARG(e);
 	W_ASSERT_ONE_QUOT(e);
 
-	i.code	= e->data->value.node;
-	e->data	= e->data->next;
-	i.data	= e->data;
+	i.code	= D1(e)->value.node;
+	D1(e)	= D2(e);
+	i.data	= D1(e);
 	i.dict	= e->dict;
 
 	w_eval(&i);
 
-	e->data	= i.data;
+	D1(e)	= i.data;
 }
 
 void
@@ -664,23 +671,23 @@ w_dip(struct w_env *e)
 	W_ASSERT_TWO_ARGS(e);
 	W_ASSERT_ONE_QUOT(e);
 
-	t = e->data->next;
+	t = D2(e);
 
-	i.code	= e->data->value.node;
-	e->data	= e->data->next->next;
-	i.data	= e->data;
+	i.code	= D1(e)->value.node;
+	D1(e)	= D3(e);
+	i.data	= D1(e);
 	i.dict	= e->dict;
 
 	w_eval(&i);
 
 	t->next = i.data;
-	e->data = t;
+	D1(e) = t;
 }
 
 void
 w_print(struct w_env *e)
 {
-	w_p(e->data);
+	w_p(D1(e));
 }
 
 struct w_builtin initial_dict[] = {
@@ -721,7 +728,7 @@ w_make_builtin_dict()
 void
 w_init_env(struct w_env *e)
 {
-	e->data = NULL;
+	e->data	= NULL;
 	e->code = NULL;
 	e->dict = w_make_builtin_dict();
 }
