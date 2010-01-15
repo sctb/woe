@@ -5,7 +5,6 @@
 #include <string.h>
 
 #define W_SPACEP(x) (x == ' ' || x == '\t')
-#define W_STARTS_ATOMP(x) ((x).type <= WT_SYMBOL)
 
 #define D1(e) e->data
 #define D2(e) e->data->next
@@ -465,14 +464,14 @@ w_make_symbol(char *value)
 }
 
 struct w_node*
-w_extend(struct w_node *n, struct w_node **h, struct w_node **o)
+w_extend(struct w_node *n, struct w_node **h, struct w_node **l)
 {
 	if (*h == NULL)
 		*h = n;
-	if (*o == NULL)
-		*o = n;
+	if (*l == NULL)
+		*l = n;
 	else
-		(*o)->next = n;
+		(*l)->next = n;
 
 	return (n);
 }
@@ -509,7 +508,7 @@ w_read_quot(struct w_reader *r)
 	W_MAKE_NODE(n, W_QUOT, node, NULL);
 	l = NULL;
 
-	while (W_STARTS_ATOMP(t = w_read_token(r))) {
+	while ((t = w_read_token(r)).type <= WT_SYMBOL) {
 		if (t.type == WT_EOF) {
 			w_read_error("unexpected end-of-file");
 
