@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,6 +41,12 @@
 #define W_ASSERT_TWO_QUOT(e)						\
 	if (D1(e)->type != W_QUOT || D2(e)->type != W_QUOT) {		\
 		w_runtime_error(e, "expected two quotations");		\
+		return;							\
+	}								\
+
+#define W_ASSERT_TWO_FIXNUM(e)						\
+	if (D1(e)->type != W_FIXNUM || D2(e)->type != W_FIXNUM) {	\
+		w_runtime_error(e, "expected two integers");		\
 		return;							\
 	}								\
 
@@ -743,6 +750,46 @@ w_divide(struct w_env *e)
 }
 
 void
+w_mod(struct w_env *e)
+{
+	W_MAKE_NODE(r, W_FIXNUM, fixnum, 0);
+	W_ASSERT_TWO_ARGS(e);
+	W_ASSERT_TWO_NUMERIC(e);
+	W_PROMOTE_BINARY_NUMERIC(r, e);
+
+	if (r->type == W_FLONUM)
+		r->value.flonum = fmod(D2(e)->value.flonum,
+			D1(e)->value.flonum);
+	else
+		r->value.fixnum = D2(e)->value.fixnum
+			% D1(e)->value.fixnum;
+
+	r->next = D3(e);
+	D1(e) = r;
+}
+
+void
+w_div(struct w_env *e)
+{
+	ldiv_t d;
+	struct w_node *q, *r;
+
+	q = w_make_fixnum(0);
+	r = w_make_fixnum(0);
+
+	W_ASSERT_TWO_ARGS(e);
+	W_ASSERT_TWO_FIXNUM(e);
+
+	d = ldiv(D2(e)->value.fixnum, D1(e)->value.fixnum);
+
+	q->value.fixnum = d.quot;
+	r->value.fixnum = d.rem;
+	q->next = r;
+	r->next = D3(e);
+	D1(e) = q;
+}
+
+void
 w_print(struct w_env *e)
 {
 	w_p(D1(e));
@@ -761,6 +808,8 @@ struct w_builtin initial_dict[] = {
 	{ "-",		w_subtract	},
 	{ "*",		w_multiply	},
 	{ "/",		w_divide	},
+	{ "MOD",	w_mod		},
+	{ "DIV",	w_div		},
 	{ "PRINT",	w_print		}
 };
 
