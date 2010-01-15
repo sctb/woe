@@ -555,22 +555,26 @@ w_lookup(struct w_word *w, char *name)
 
 void w_eval(struct w_env*);
 
-void
-w_call(struct w_word *w, struct w_env *e)
+void w_eval_quot(struct w_env* e, struct w_node* n)
 {
 	struct w_env i;
 
-	if (w->builtin != NULL) {
+	i.data = D1(e);
+	i.dict = e->dict;
+	i.code = n->value.node;
+
+	w_eval(&i);
+
+	D1(e)	= i.data;
+}
+
+void
+w_call(struct w_word *w, struct w_env *e)
+{
+	if (w->builtin != NULL)
 		w->builtin(e);
-	} else {
-		i.data = D1(e);
-		i.dict = e->dict;
-		i.code = w->quot->value.node;
-
-		w_eval(&i);
-
-		D1(e)	= i.data;
-	}
+	else
+		w_eval_quot(e, w->quot);
 }
 
 void
@@ -686,42 +690,34 @@ void
 w_i(struct w_env *e)
 /* [A] i => A */
 {
-	struct w_env i;
+	struct w_node *n;
 
 	W_ASSERT_ONE_ARG(e);
 	W_ASSERT_ONE_QUOT(e);
 
-	i.code	= D1(e)->value.node;
+	n	= D1(e);
 	D1(e)	= D2(e);
-	i.data	= D1(e);
-	i.dict	= e->dict;
 
-	w_eval(&i);
-
-	D1(e)	= i.data;
+	w_eval_quot(e, n);
 }
 
 void
 w_dip(struct w_env *e)
 /* [B] [A] dip => A [B] */
 {
-	struct w_env	i;
-	struct w_node	*t;
+	struct w_node	*t, *n;
 
 	W_ASSERT_TWO_ARGS(e);
 	W_ASSERT_ONE_QUOT(e);
 
-	t = D2(e);
-
-	i.code	= D1(e)->value.node;
+	n	= D1(e);
+	t	= D2(e);
 	D1(e)	= D3(e);
-	i.data	= D1(e);
-	i.dict	= e->dict;
 
-	w_eval(&i);
+	w_eval_quot(e, n);
 
-	t->next = i.data;
-	D1(e) = t;
+	t->next	= D1(e);
+	D1(e)	= t;
 }
 
 void
