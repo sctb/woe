@@ -65,14 +65,15 @@
 
 #define W_BINARY_NUMERIC_OP(e, op)					\
 	W_MAKE_NODE(_r, W_FIXNUM, fixnum, 0);				\
+	W_ASSERT_TWO_ARGS(e);						\
 	W_ASSERT_TWO_NUMERIC(e);					\
 	W_PROMOTE_BINARY_NUMERIC(_r, e);				\
 	if (_r->type == W_FLONUM)					\
-		_r->value.flonum = D1(e)->value.flonum			\
-			op D2(e)->value.flonum;				\
+		_r->value.flonum = D2(e)->value.flonum			\
+			op D1(e)->value.flonum;				\
 	else								\
-		_r->value.fixnum = D1(e)->value.fixnum			\
-			op D2(e)->value.fixnum;				\
+		_r->value.fixnum = D2(e)->value.fixnum			\
+			op D1(e)->value.fixnum;				\
 	_r->next = D3(e);						\
 	D1(e) = _r;							\
 
