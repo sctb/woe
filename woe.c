@@ -83,6 +83,14 @@
 	_r->next = D3(e);						\
 	D1(e) = _r;							\
 
+#define W_TYPE_PREDICATE(e, typ)					\
+	W_MAKE_NODE(n, W_FIXNUM, fixnum, -1);				\
+	W_ASSERT_ONE_ARG(e);						\
+	if (D1(e)->type == typ)						\
+		n->value.fixnum = 0;					\
+	n->next	= D2(e);						\
+	D1(e)	= n;							\
+
 enum w_token_type {
 	WT_EOL,
 	WT_EOF,
@@ -786,6 +794,30 @@ w_div(struct w_env *e)
 }
 
 void
+w_integerp(struct w_env *e)
+{
+	W_TYPE_PREDICATE(e, W_FIXNUM);
+}
+
+void
+w_floatp(struct w_env *e)
+{
+	W_TYPE_PREDICATE(e, W_FLONUM);
+}
+
+void
+w_stringp(struct w_env *e)
+{
+	W_TYPE_PREDICATE(e, W_STRING);
+}
+
+void
+w_quotationp(struct w_env *e)
+{
+	W_TYPE_PREDICATE(e, W_QUOT);
+}
+
+void
 w_print(struct w_env *e)
 {
 	w_p(D1(e));
@@ -806,6 +838,10 @@ struct w_builtin initial_dict[] = {
 	{ "/",		w_divide	},
 	{ "MOD",	w_mod		},
 	{ "DIV",	w_div		},
+	{ "INTEGER?",	w_integerp	},
+	{ "FLOAT?",	w_floatp	},
+	{ "STRING?",	w_stringp	},
+	{ "QUOTATION?",	w_quotationp	},
 	{ "PRINT",	w_print		}
 };
 
