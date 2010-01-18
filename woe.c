@@ -555,7 +555,8 @@ w_lookup(struct w_word *w, char *name)
 
 void w_eval(struct w_env*);
 
-void w_eval_quot(struct w_env* e, struct w_node* n)
+void
+w_eval_quot(struct w_env* e, struct w_node* n)
 {
 	struct w_env i;
 
