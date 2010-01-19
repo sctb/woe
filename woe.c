@@ -91,23 +91,22 @@
 	n->next	= D2(e);						\
 	D1(e)	= n;							\
 
-enum w_token_type {
-	WT_EOL,
-	WT_EOF,
-
-	WT_STRING,
-	WT_FIXNUM,
-	WT_FLONUM,
-	WT_LSQUARE,
-	WT_SYMBOL,
-
-	WT_COLON,
-	WT_SEMICOL,
-	WT_RSQUARE
-};
-
 struct w_token {
-	enum w_token_type type;
+	enum {
+		WT_EOL,
+		WT_EOF,
+
+		WT_STRING,
+		WT_FIXNUM,
+		WT_FLONUM,
+		WT_LSQUARE,
+		WT_SYMBOL,
+
+		WT_COLON,
+		WT_SEMICOL,
+		WT_RSQUARE
+	} type;
+
 	union {
 		long	fixnum;
 		double	flonum;
@@ -126,24 +125,22 @@ struct w_reader {
 	int	column;
 };
 
-enum w_type {
-	W_STRING,
-	W_FIXNUM,
-	W_FLONUM,
-	W_QUOT,
-	W_SYMBOL
-};
-
-union w_value {
-	long	fixnum;
-	double	flonum;
-	char	*string;
-	struct	w_node	*node;
-};
-
 struct w_node {
-	enum	w_type	type;
-	union	w_value	value;
+	enum {
+		W_STRING,
+		W_FIXNUM,
+		W_FLONUM,
+		W_QUOT,
+		W_SYMBOL
+	} type;
+
+	union {
+		long	fixnum;
+		double	flonum;
+		char	*string;
+		struct	w_node	*node;
+	} value;
+
 	struct	w_node	*next;
 };
 
@@ -714,7 +711,7 @@ void
 w_dip(struct w_env *e)
 /* [B] [A] dip => A [B] */
 {
-	struct w_node	*t, *n;
+	struct w_node *t, *n;
 
 	W_ASSERT_TWO_ARGS(e);
 	W_ASSERT_ONE_QUOT(e);
