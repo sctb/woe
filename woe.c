@@ -1,5 +1,4 @@
 #include <ctype.h>
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,57 +30,17 @@
 		return;							\
 	}								\
 
-#define W_ASSERT_ONE_QUOT(e)						\
-	if (D1(e)->type != W_QUOT) {					\
-		w_runtime_error(e, "expected one quotation");		\
+#define W_ASSERT_ONE_TYPE(e, typ, msg)					\
+	if (D1(e)->type != typ) {					\
+		w_runtime_error(e, msg);				\
 		return;							\
 	}								\
 
-#define W_ASSERT_TWO_QUOT(e)						\
-	if (D1(e)->type != W_QUOT || D2(e)->type != W_QUOT) {		\
-		w_runtime_error(e, "expected two quotations");		\
+#define W_ASSERT_TWO_TYPE(e, typ, msg)					\
+	if (D1(e)->type != typ && D2(e)->type != typ) {			\
+		w_runtime_error(e, msg);				\
 		return;							\
 	}								\
-
-#define W_ASSERT_TWO_FIXNUM(e)						\
-	if (D1(e)->type != W_FIXNUM || D2(e)->type != W_FIXNUM) {	\
-		w_runtime_error(e, "expected two integers");		\
-		return;							\
-	}								\
-
-#define W_ASSERT_TWO_NUMERIC(e)						\
-	if ((D1(e)->type != W_FIXNUM && D1(e)->type != W_FLONUM) ||	\
-	    (D2(e)->type != W_FIXNUM && D2(e)->type != W_FLONUM)) {	\
-		w_runtime_error(e, "expected two numbers");		\
-		return;							\
-	}								\
-
-#define W_PROMOTE_TO_FLONUM(n)						\
-	if (n->type == W_FIXNUM) {					\
-		n->type		= W_FLONUM;				\
-		n->value.flonum = (double)n->value.fixnum;		\
-	}								\
-
-#define W_NORMALIZE_BINARY_NUMERIC(r, e)				\
-	if (D1(e)->type == W_FLONUM || D2(e)->type == W_FLONUM) {	\
-		W_PROMOTE_TO_FLONUM(r);					\
-		W_PROMOTE_TO_FLONUM(D1(e));				\
-		W_PROMOTE_TO_FLONUM(D2(e));				\
-	}								\
-
-#define W_BINARY_NUMERIC_OP(e, op)					\
-	W_MAKE_NODE(_r, W_FIXNUM, fixnum, 0);				\
-	W_ASSERT_TWO_ARGS(e);						\
-	W_ASSERT_TWO_NUMERIC(e);					\
-	W_NORMALIZE_BINARY_NUMERIC(_r, e);				\
-	if (_r->type == W_FLONUM)					\
-		_r->value.flonum = D2(e)->value.flonum			\
-			op D1(e)->value.flonum;				\
-	else								\
-		_r->value.fixnum = D2(e)->value.fixnum			\
-			op D1(e)->value.fixnum;				\
-	_r->next = D3(e);						\
-	D1(e) = _r;							\
 
 #define W_TYPE_PREDICATE(e, typ)					\
 	W_MAKE_NODE(n, W_FIXNUM, fixnum, -1);				\
@@ -469,6 +428,14 @@ w_make_symbol(char *value)
 }
 
 struct w_node*
+w_make_quot()
+{
+	W_MAKE_NODE(n, W_QUOT, node, NULL);
+
+	return (n);
+}
+
+struct w_node*
 w_extend(struct w_node *n, struct w_node **h, struct w_node **l)
 {
 	if (*h == NULL)
@@ -508,9 +475,9 @@ struct w_node*
 w_read_quot(struct w_reader *r)
 {
 	struct w_token	t;
-	struct w_node	*l;
+	struct w_node	*l, *n;
 
-	W_MAKE_NODE(n, W_QUOT, node, NULL);
+	n = w_make_quot();
 	l = NULL;
 
 	while ((t = w_read_token(r)).type <= WT_SYMBOL) {
@@ -608,7 +575,7 @@ w_eval(struct w_env *e)
 
 void
 w_swap(struct w_env *e)
-/* [B] [A] swap => [A] [B] */
+/* ([b] [a] -- [a] [b]) */
 {
 	struct w_node *n;
 
@@ -622,7 +589,7 @@ w_swap(struct w_env *e)
 
 void
 w_dup(struct w_env *e)
-/* [A] dup => [A] [A] */
+/* (a -- a a) */
 {
 	struct w_node *n;
 
@@ -635,7 +602,7 @@ w_dup(struct w_env *e)
 
 void
 w_pop(struct w_env *e)
-/* [B] [A] pop => [B] */
+/* (b a -- b) */
 {
 	W_ASSERT_ONE_ARG(e);
 
@@ -644,12 +611,12 @@ w_pop(struct w_env *e)
 
 void
 w_cat(struct w_env *e)
-/* [B] [A] cat => [B A] */
+/* ([b] [a] -- [b a]) */
 {
 	struct w_node *l;
 
 	W_ASSERT_TWO_ARGS(e);
-	W_ASSERT_TWO_QUOT(e);
+	W_ASSERT_TWO_TYPE(e, W_QUOT, "cannot concatenate non-quotations");
 
 	l = D2(e)->value.node;
 
@@ -665,12 +632,12 @@ w_cat(struct w_env *e)
 
 void
 w_cons(struct w_env *e)
-/* [B] [A] cons => [[B] A] */
+/* b [a] -- [b a] */
 {
 	struct w_node *b;
 
 	W_ASSERT_TWO_ARGS(e);
-	W_ASSERT_ONE_QUOT(e);
+	W_ASSERT_ONE_TYPE(e, W_QUOT, "cannot cons onto a non-quotation");
 
 	b			= D2(e);
 	D2(e)			= D3(e);
@@ -680,12 +647,13 @@ w_cons(struct w_env *e)
 
 void
 w_unit(struct w_env *e)
-/* [A] unit => [[A]] */
+/* a -- [a] */
 {
-	W_MAKE_NODE(q, W_QUOT, node, NULL);
+	struct w_node *q;
 
 	W_ASSERT_ONE_ARG(e);
 
+	q		= w_make_quot();
 	q->value.node	= D1(e);
 	q->next		= D2(e);
 	D2(e)		= NULL;
@@ -694,12 +662,12 @@ w_unit(struct w_env *e)
 
 void
 w_i(struct w_env *e)
-/* [A] i => A */
+/* [a] -- a */
 {
 	struct w_node *n;
 
 	W_ASSERT_ONE_ARG(e);
-	W_ASSERT_ONE_QUOT(e);
+	W_ASSERT_ONE_TYPE(e, W_QUOT, "cannot evaluate a non-quotation");
 
 	n	= D1(e);
 	D1(e)	= D2(e);
@@ -709,12 +677,12 @@ w_i(struct w_env *e)
 
 void
 w_dip(struct w_env *e)
-/* [B] [A] dip => A [B] */
+/* [b] [a] -- a [b] */
 {
 	struct w_node *t, *n;
 
 	W_ASSERT_TWO_ARGS(e);
-	W_ASSERT_ONE_QUOT(e);
+	W_ASSERT_ONE_TYPE(e, W_QUOT, "cannot evaluate a non-quotation");
 
 	n	= D1(e);
 	t	= D2(e);
@@ -727,95 +695,36 @@ w_dip(struct w_env *e)
 }
 
 void
-w_add(struct w_env *e)
-{
-	W_BINARY_NUMERIC_OP(e, +);
-}
-
-void
-w_subtract(struct w_env *e)
-{
-	W_BINARY_NUMERIC_OP(e, -);
-}
-
-void
-w_multiply(struct w_env *e)
-{
-	W_BINARY_NUMERIC_OP(e, *);
-}
-
-void
-w_divide(struct w_env *e)
-{
-	W_BINARY_NUMERIC_OP(e, /);
-}
-
-void
-w_mod(struct w_env *e)
-{
-	W_MAKE_NODE(r, W_FIXNUM, fixnum, 0);
-	W_ASSERT_TWO_ARGS(e);
-	W_ASSERT_TWO_NUMERIC(e);
-	W_NORMALIZE_BINARY_NUMERIC(r, e);
-
-	if (r->type == W_FLONUM)
-		r->value.flonum = fmod(D2(e)->value.flonum,
-			D1(e)->value.flonum);
-	else
-		r->value.fixnum = D2(e)->value.fixnum
-			% D1(e)->value.fixnum;
-
-	r->next = D3(e);
-	D1(e) = r;
-}
-
-void
-w_div(struct w_env *e)
-{
-	ldiv_t d;
-	struct w_node *q, *r;
-
-	q = w_make_fixnum(0);
-	r = w_make_fixnum(0);
-
-	W_ASSERT_TWO_ARGS(e);
-	W_ASSERT_TWO_FIXNUM(e);
-
-	d = ldiv(D2(e)->value.fixnum, D1(e)->value.fixnum);
-
-	q->value.fixnum = d.quot;
-	r->value.fixnum = d.rem;
-	q->next = r;
-	r->next = D3(e);
-	D1(e) = q;
-}
-
-void
-w_integerp(struct w_env *e)
+w_fixnump(struct w_env *e)
+/* (a -- ?) */
 {
 	W_TYPE_PREDICATE(e, W_FIXNUM);
 }
 
 void
-w_floatp(struct w_env *e)
+w_flonump(struct w_env *e)
+/* (a -- ?) */
 {
 	W_TYPE_PREDICATE(e, W_FLONUM);
 }
 
 void
 w_stringp(struct w_env *e)
+/* (a -- ?) */
 {
 	W_TYPE_PREDICATE(e, W_STRING);
 }
 
 void
 w_quotationp(struct w_env *e)
+/* (a -- ?) */
 {
 	W_TYPE_PREDICATE(e, W_QUOT);
 }
 
 void
 w_print(struct w_env *e)
+/* (a -- a) */
 {
 	w_p(D1(e));
 }
@@ -829,14 +738,8 @@ struct w_builtin initial_dict[] = {
 	{ "UNIT",	w_unit		},
 	{ "I",		w_i		},
 	{ "DIP",	w_dip		},
-	{ "+",		w_add		},
-	{ "-",		w_subtract	},
-	{ "*",		w_multiply	},
-	{ "/",		w_divide	},
-	{ "MOD",	w_mod		},
-	{ "DIV",	w_div		},
-	{ "INTEGER?",	w_integerp	},
-	{ "FLOAT?",	w_floatp	},
+	{ "FIXNUM?",	w_fixnump	},
+	{ "FLONUM?",	w_flonump	},
 	{ "STRING?",	w_stringp	},
 	{ "QUOTATION?",	w_quotationp	},
 	{ "PRINT",	w_print		}
