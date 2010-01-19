@@ -43,7 +43,7 @@
 	}								\
 
 #define W_TYPE_PREDICATE(e, typ)					\
-	W_MAKE_NODE(n, W_FIXNUM, fixnum, -1);				\
+	W_MAKE_NODE(n, W_BOOL, fixnum, -1);				\
 	W_ASSERT_ONE_ARG(e);						\
 	if (D1(e)->type == typ)						\
 		n->value.fixnum = 0;					\
@@ -89,6 +89,7 @@ struct w_node {
 		W_STRING,
 		W_FIXNUM,
 		W_FLONUM,
+		W_BOOL,
 		W_QUOT,
 		W_SYMBOL
 	} type;
@@ -170,6 +171,12 @@ w_p(struct w_node *n)
 		break;
 	case W_FLONUM:
 		printf("%.2f ", n->value.flonum);
+		break;
+	case W_BOOL:
+		if (n->value.fixnum == 0)
+			printf("true ");
+		else
+			printf("false ");
 		break;
 	case W_QUOT:
 		printf("[ ");
@@ -407,6 +414,14 @@ struct w_node*
 w_make_flonum(double value)
 {
 	W_MAKE_NODE(n, W_FLONUM, flonum, value);
+
+	return (n);
+}
+
+struct w_node*
+w_make_bool(long value)
+{
+	W_MAKE_NODE(n, W_BOOL, fixnum, value);
 
 	return (n);
 }
@@ -695,6 +710,30 @@ w_dip(struct w_env *e)
 }
 
 void
+w_true(struct w_env *e)
+/* ( -- ?) */
+{
+	struct w_node *n;
+
+	n = w_make_bool(0);
+
+	n->next	= D1(e);
+	D1(e)	= n;
+}
+
+void
+w_false(struct w_env *e)
+/* ( -- ?) */
+{
+	struct w_node *n;
+
+	n = w_make_bool(-1);
+
+	n->next	= D1(e);
+	D1(e)	= n;
+}
+
+void
 w_fixnump(struct w_env *e)
 /* (a -- ?) */
 {
@@ -706,6 +745,13 @@ w_flonump(struct w_env *e)
 /* (a -- ?) */
 {
 	W_TYPE_PREDICATE(e, W_FLONUM);
+}
+
+void
+w_boolp(struct w_env *e)
+/* (a -- ?) */
+{
+	W_TYPE_PREDICATE(e, W_BOOL);
 }
 
 void
@@ -738,8 +784,11 @@ struct w_builtin initial_dict[] = {
 	{ "UNIT",	w_unit		},
 	{ "I",		w_i		},
 	{ "DIP",	w_dip		},
+	{ "TRUE",	w_true		},
+	{ "FALSE",	w_false		},
 	{ "FIXNUM?",	w_fixnump	},
 	{ "FLONUM?",	w_flonump	},
+	{ "BOOLEAN?",	w_boolp		},
 	{ "STRING?",	w_stringp	},
 	{ "QUOTATION?",	w_quotationp	},
 	{ "PRINT",	w_print		}
