@@ -8,6 +8,7 @@
 #define D1(e) e->data
 #define D2(e) e->data->next
 #define D3(e) e->data->next->next
+#define D4(e) e->data->next->next->next
 
 #define C1(e) e->code
 #define C2(e) e->code->next
@@ -26,6 +27,12 @@
 
 #define W_ASSERT_TWO_ARGS(e)						\
 	if (D1(e) == NULL || D2(e) == NULL) {				\
+		w_runtime_error(e, "stack underflow");			\
+		return;							\
+	}								\
+
+#define W_ASSERT_THREE_ARGS(e)						\
+	if (D1(e) == NULL || D2(e) == NULL || D3(e) == NULL) {		\
 		w_runtime_error(e, "stack underflow");			\
 		return;							\
 	}								\
@@ -590,7 +597,7 @@ w_eval(struct w_env *e)
 
 void
 w_swap(struct w_env *e)
-/* ([b] [a] -- [a] [b]) */
+/* (b a -- a b) */
 {
 	struct w_node *n;
 
@@ -647,7 +654,7 @@ w_cat(struct w_env *e)
 
 void
 w_cons(struct w_env *e)
-/* b [a] -- [b a] */
+/* (b [a] -- [b a]) */
 {
 	struct w_node *b;
 
@@ -662,7 +669,7 @@ w_cons(struct w_env *e)
 
 void
 w_unit(struct w_env *e)
-/* a -- [a] */
+/* (a -- [a]) */
 {
 	struct w_node *q;
 
@@ -677,7 +684,7 @@ w_unit(struct w_env *e)
 
 void
 w_i(struct w_env *e)
-/* [a] -- a */
+/* ([a] -- ) */
 {
 	struct w_node *n;
 
@@ -692,7 +699,7 @@ w_i(struct w_env *e)
 
 void
 w_dip(struct w_env *e)
-/* [b] [a] -- a [b] */
+/* ([b] [a] -- [b]) */
 {
 	struct w_node *t, *n;
 
@@ -769,6 +776,25 @@ w_quotationp(struct w_env *e)
 }
 
 void
+w_branch(struct w_env *e)
+/* (? [t] [f] -- ) */
+{
+	struct w_node *n;
+
+	W_ASSERT_THREE_ARGS(e);
+	W_ASSERT_TWO_TYPE(e, W_QUOT, "cannot branch to a non-quotation");
+
+	if (D3(e)->value.fixnum == 0)
+		n = D2(e);
+	else
+		n = D1(e);
+
+	D1(e) = D4(e);
+
+	w_eval_quot(e, n);
+}
+
+void
 w_print(struct w_env *e)
 /* (a -- a) */
 {
@@ -791,6 +817,7 @@ struct w_builtin initial_dict[] = {
 	{ "BOOLEAN?",	w_boolp		},
 	{ "STRING?",	w_stringp	},
 	{ "QUOTATION?",	w_quotationp	},
+	{ "BRANCH",	w_branch	},
 	{ "PRINT",	w_print		}
 };
 
