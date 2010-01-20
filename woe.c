@@ -129,26 +129,26 @@ struct w_builtin {
 	void (*builtin)(struct w_env*);
 };
 
-struct w_node*
+static struct w_node*
 w_alloc_node()
 {
 	return ((struct w_node*)malloc(sizeof(struct w_node)));
 }
 
-struct w_word*
+static struct w_word*
 w_alloc_word()
 {
 	return ((struct w_word*)malloc(sizeof(struct w_word)));
 }
 
-char*
+static char*
 w_alloc_string(size_t len)
 {
 	return ((char*)malloc(sizeof(char)*len));
 }
 
-char*
-w_copy_string(char *o)
+static char*
+w_copy_string(const char *o)
 {
 	char *s;
 
@@ -158,8 +158,8 @@ w_copy_string(char *o)
 	return (s);
 }
 
-struct w_node*
-w_copy_node(struct w_node *o)
+static struct w_node*
+w_copy_node(const struct w_node *o)
 {
 	struct w_node *n, *q, *t;
 
@@ -189,11 +189,10 @@ w_copy_node(struct w_node *o)
 	return (n);
 }
 
-void
-w_pn(struct w_node *n);
+static void w_pn(const struct w_node *n);
 
-void
-w_p(struct w_node *n)
+static void
+w_p(const struct w_node *n)
 {
 	if (n == NULL)
 		return;
@@ -226,8 +225,8 @@ w_p(struct w_node *n)
 	}
 }
 
-void
-w_pn(struct w_node *n)
+static void
+w_pn(const struct w_node *n)
 {
 	while (n != NULL) {
 		w_p(n);
@@ -235,7 +234,7 @@ w_pn(struct w_node *n)
 	}
 }
 
-void
+static void
 w_init_reader(struct w_reader *r, FILE *f)
 {
 	r->stream	= f;
@@ -245,7 +244,7 @@ w_init_reader(struct w_reader *r, FILE *f)
 	r->bufpos	= 0;
 }
 
-char
+static char
 w_read_char(struct w_reader *r)
 {
 	char c;
@@ -269,14 +268,14 @@ w_read_char(struct w_reader *r)
 	return (c);
 }
 
-void
+static void
 w_unread_char(struct w_reader *r)
 {
 	r->bufpos--;
 	r->column--;
 }
 
-struct w_token
+static struct w_token
 w_read_string(struct w_reader *r)
 {
 	size_t	pos;
@@ -302,7 +301,7 @@ w_read_string(struct w_reader *r)
 	return (t);
 }
 
-struct w_token
+static struct w_token
 w_read_number(struct w_reader *r)
 {
 	size_t	pos;
@@ -343,7 +342,7 @@ w_read_number(struct w_reader *r)
 	return (t);
 }
 
-struct w_token
+static struct w_token
 w_read_symbol(struct w_reader *r)
 {
 	size_t	pos;
@@ -371,7 +370,7 @@ w_read_symbol(struct w_reader *r)
 	return (t);
 }
 
-struct w_token
+static struct w_token
 w_read_token(struct w_reader *r)
 {
 	char	c;
@@ -426,20 +425,20 @@ restart:
 	}
 }
 
-void
-w_read_error(char *msg)
+static void
+w_read_error(const char *msg)
 {
 	printf("READ ERROR: %s\n", msg);
 }
 
-void
-w_runtime_error(struct w_env *e, char *msg)
+static void
+w_runtime_error(struct w_env *e, const char *msg)
 {
 	printf("ERROR: %s\n", msg);
 	C1(e) = NULL;
 }
 
-struct w_node*
+static struct w_node*
 w_make_fixnum(long value)
 {
 	W_MAKE_NODE(n, W_FIXNUM, fixnum, value);
@@ -447,7 +446,7 @@ w_make_fixnum(long value)
 	return (n);
 }
 
-struct w_node*
+static struct w_node*
 w_make_flonum(double value)
 {
 	W_MAKE_NODE(n, W_FLONUM, flonum, value);
@@ -455,7 +454,7 @@ w_make_flonum(double value)
 	return (n);
 }
 
-struct w_node*
+static struct w_node*
 w_make_bool(long value)
 {
 	W_MAKE_NODE(n, W_BOOL, fixnum, value);
@@ -463,7 +462,7 @@ w_make_bool(long value)
 	return (n);
 }
 
-struct w_node*
+static struct w_node*
 w_make_string(char *value)
 {
 	W_MAKE_NODE(n, W_STRING, string, value);
@@ -471,7 +470,7 @@ w_make_string(char *value)
 	return (n);
 }
 
-struct w_node*
+static struct w_node*
 w_make_symbol(char *value)
 {
 	W_MAKE_NODE(n, W_SYMBOL, string, value);
@@ -479,7 +478,7 @@ w_make_symbol(char *value)
 	return (n);
 }
 
-struct w_node*
+static struct w_node*
 w_make_quot()
 {
 	W_MAKE_NODE(n, W_QUOT, node, NULL);
@@ -487,7 +486,7 @@ w_make_quot()
 	return (n);
 }
 
-struct w_node*
+static struct w_node*
 w_extend(struct w_node *n, struct w_node **h, struct w_node **l)
 {
 	if (*h == NULL)
@@ -500,10 +499,9 @@ w_extend(struct w_node *n, struct w_node **h, struct w_node **l)
 	return (n);
 }
 
-struct w_node*
-w_read_quot(struct w_reader*);
+static struct w_node* w_read_quot(struct w_reader*);
 
-struct w_node*
+static struct w_node*
 w_read_atom(struct w_reader *r, struct w_token t)
 {
 	switch (t.type)
@@ -523,7 +521,7 @@ w_read_atom(struct w_reader *r, struct w_token t)
 	}
 }
 
-struct w_node*
+static struct w_node*
 w_read_quot(struct w_reader *r)
 {
 	struct w_token	t;
@@ -545,7 +543,7 @@ w_read_quot(struct w_reader *r)
 	return (n);
 }
 
-struct w_word*
+static struct w_word*
 w_read_def(struct w_reader *r)
 {
 	struct w_token	t;
@@ -565,8 +563,8 @@ w_read_def(struct w_reader *r)
 	}
 }
 
-struct w_word*
-w_lookup(struct w_word *w, char *name)
+static struct w_word*
+w_lookup(struct w_word *w, const char *name)
 {
 	while (w != NULL) {
 		if (strcasecmp(w->name, name) == 0)
@@ -577,9 +575,9 @@ w_lookup(struct w_word *w, char *name)
 	return (NULL);
 }
 
-void w_eval(struct w_env*);
+static void w_eval(struct w_env*);
 
-void
+static void
 w_eval_quot(struct w_env* e, struct w_node* n)
 {
 	struct w_env i;
@@ -593,8 +591,8 @@ w_eval_quot(struct w_env* e, struct w_node* n)
 	D1(e)	= i.data;
 }
 
-void
-w_call(struct w_word *w, struct w_env *e)
+static void
+w_call(const struct w_word *w, struct w_env *e)
 {
 	if (w->builtin != NULL)
 		w->builtin(e);
@@ -602,7 +600,7 @@ w_call(struct w_word *w, struct w_env *e)
 		w_eval_quot(e, w->quot);
 }
 
-void
+static void
 w_eval(struct w_env *e)
 {
 	struct w_node *n;
@@ -625,7 +623,7 @@ w_eval(struct w_env *e)
 	}
 }
 
-void
+static void
 w_swap(struct w_env *e)
 /* (b a -- a b) */
 {
@@ -639,7 +637,7 @@ w_swap(struct w_env *e)
 	D1(e)	= n;
 }
 
-void
+static void
 w_dup(struct w_env *e)
 /* (a -- a a) */
 {
@@ -652,7 +650,7 @@ w_dup(struct w_env *e)
 	D1(e)	= n;
 }
 
-void
+static void
 w_pop(struct w_env *e)
 /* (b a -- b) */
 {
@@ -661,7 +659,7 @@ w_pop(struct w_env *e)
 	D1(e) = D2(e);
 }
 
-void
+static void
 w_cat(struct w_env *e)
 /* ([b] [a] -- [b a]) */
 {
@@ -682,7 +680,7 @@ w_cat(struct w_env *e)
 	w_pop(e);
 }
 
-void
+static void
 w_cons(struct w_env *e)
 /* (b [a] -- [b a]) */
 {
@@ -697,7 +695,7 @@ w_cons(struct w_env *e)
 	D1(e)->value.node	= b;
 }
 
-void
+static void
 w_i(struct w_env *e)
 /* ([a] -- ) */
 {
@@ -712,7 +710,7 @@ w_i(struct w_env *e)
 	w_eval_quot(e, n);
 }
 
-void
+static void
 w_true(struct w_env *e)
 /* ( -- ?) */
 {
@@ -724,7 +722,7 @@ w_true(struct w_env *e)
 	D1(e)	= n;
 }
 
-void
+static void
 w_false(struct w_env *e)
 /* ( -- ?) */
 {
@@ -736,42 +734,42 @@ w_false(struct w_env *e)
 	D1(e)	= n;
 }
 
-void
+static void
 w_fixnump(struct w_env *e)
 /* (a -- ?) */
 {
 	W_TYPE_PREDICATE(e, W_FIXNUM);
 }
 
-void
+static void
 w_flonump(struct w_env *e)
 /* (a -- ?) */
 {
 	W_TYPE_PREDICATE(e, W_FLONUM);
 }
 
-void
+static void
 w_boolp(struct w_env *e)
 /* (a -- ?) */
 {
 	W_TYPE_PREDICATE(e, W_BOOL);
 }
 
-void
+static void
 w_stringp(struct w_env *e)
 /* (a -- ?) */
 {
 	W_TYPE_PREDICATE(e, W_STRING);
 }
 
-void
+static void
 w_quotationp(struct w_env *e)
 /* (a -- ?) */
 {
 	W_TYPE_PREDICATE(e, W_QUOT);
 }
 
-void
+static void
 w_branch(struct w_env *e)
 /* (? [t] [f] -- ) */
 {
@@ -790,7 +788,7 @@ w_branch(struct w_env *e)
 	w_eval_quot(e, n);
 }
 
-void
+static void
 w_print(struct w_env *e)
 /* (a -- a) */
 {
@@ -815,7 +813,7 @@ struct w_builtin initial_dict[] = {
 	{ "PRINT",	w_print		}
 };
 
-struct w_word*
+static struct w_word*
 w_make_builtin_dict()
 {
 	int i, len;
@@ -838,8 +836,8 @@ w_make_builtin_dict()
 	return (w);
 }
 
-void
-w_load(struct w_env *e, FILE *f, char *prompt)
+static void
+w_load(struct w_env *e, FILE *f, const char *prompt)
 {
 	struct w_token	t;
 	struct w_reader	r;
@@ -878,7 +876,7 @@ prompt:
 	}
 }
 
-void
+static void
 w_init_env(struct w_env *e)
 {
 	e->data	= NULL;
