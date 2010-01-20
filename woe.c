@@ -147,14 +147,41 @@ w_alloc_string(size_t len)
 	return ((char*)malloc(sizeof(char)*len));
 }
 
+char*
+w_copy_string(char *o)
+{
+	char *s;
+
+	s = w_alloc_string(strlen(o));
+	strcpy(s, o);
+
+	return (s);
+}
+
 struct w_node*
 w_copy_node(struct w_node *o)
 {
 	struct w_node *n;
 
-	n		= w_alloc_node();
-	n->type		= o->type;
-	n->value	= o->value;
+	if (o == NULL)
+		return (NULL);
+
+	n	= w_alloc_node();
+	n->type	= o->type;
+
+	switch (n->type) {
+	case W_STRING:
+		n->value.string	= w_copy_string(o->value.string);
+		break;
+	case W_QUOT:
+		n->value.node = w_copy_node(o->value.node);
+		if (o->value.node != NULL)
+			n->value.node->next =
+				w_copy_node(o->value.node->next);
+		break;
+	default:
+		n->value = o->value;
+	}
 
 	return (n);
 }

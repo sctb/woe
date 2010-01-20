@@ -23,6 +23,9 @@
 : unless (? [f] -- ) swap [pop] [i] branch ;
 : choice (? t f -- t/f) dig2 [pop] [swap pop] branch ;
 
+: and (? ? -- ?) false choice ;
+: or (? ? -- ?) true swap choice ;
+: xor (? ? -- ?) unit dup [not] cat swap branch ;
 : not (? -- ?) false true choice ;
 
 : loop ([p] -- ) [i] keep [loop] cons when ;
