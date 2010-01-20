@@ -1,5 +1,8 @@
 : . (a -- ) print pop ;
 
+: x ([a] -- [a]) dup i ;
+: y ([a] -- [a]) [dup cons] swap cat dup cons i ;
+
 : dup2 dup dup ;
 : dup3 dup dup dup ;
 
