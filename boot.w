@@ -3,8 +3,12 @@
 : x ([a] -- [a]) dup i ;
 : y ([a] -- [a]) [dup cons] swap cat dup cons i ;
 
-: dup2 dup dup ;
-: dup3 dup dup dup ;
+: unit (a -- [a]) [] cons ;
+
+: dip  (a [b] -- a) swap unit cat i ;
+: dip2 (a b [c] -- a b) [dip] cons dip ;
+: dip3 (a b c [d] -- a b c) [dip2] cons dip ;
+: dip4 (a b c d [e] -- a b c d) [dip3] cons dip ;
 
 : dig  (a b -- b a) [] cons dip ;
 : dig2 (a b c -- b c a) [] cons cons dip ;
@@ -14,9 +18,8 @@
 : bury2 (a b c -- c a b) [[] cons cons] dip swap i ;
 : bury3 (a b c d -- d a b c) [[] cons cons cons] dip swap i ;
 
-: dip2 (a b [c] -- a b) [unit cons] dip dip i ;
-: dip3 (a b c [d] -- a b c) [unit cons cons] dip dip i ;
-: dip4 (a b c d [e] -- a b c d) [unit cons cons cons] dip dip i ;
+: dup2 (a b -- a b a b) [dup] dip dup bury2 ;
+: dup3 (a b c -- a b c a b c) [dup2] dip dup bury3 ;
 
 : keep (a [b] -- a) swap dup bury2 [i] dip ;
 : keep2 (a b [c] -- a b) [dup2] dip dip2 ;

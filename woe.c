@@ -161,7 +161,7 @@ w_copy_string(char *o)
 struct w_node*
 w_copy_node(struct w_node *o)
 {
-	struct w_node *n;
+	struct w_node *n, *q, *t;
 
 	if (o == NULL)
 		return (NULL);
@@ -174,10 +174,13 @@ w_copy_node(struct w_node *o)
 		n->value.string	= w_copy_string(o->value.string);
 		break;
 	case W_QUOT:
-		n->value.node = w_copy_node(o->value.node);
-		if (o->value.node != NULL)
-			n->value.node->next =
-				w_copy_node(o->value.node->next);
+		n->value.node = q = w_copy_node(o->value.node);
+		t = o->value.node;
+		while (t != NULL) {
+			q->next = w_copy_node(t->next);
+			q	= q->next;
+			t	= t->next;
+		}
 		break;
 	default:
 		n->value = o->value;
@@ -695,21 +698,6 @@ w_cons(struct w_env *e)
 }
 
 void
-w_unit(struct w_env *e)
-/* (a -- [a]) */
-{
-	struct w_node *q;
-
-	W_ASSERT_ONE_ARG(e);
-
-	q		= w_make_quot();
-	q->value.node	= D1(e);
-	q->next		= D2(e);
-	D2(e)		= NULL;
-	D1(e)		= q;
-}
-
-void
 w_i(struct w_env *e)
 /* ([a] -- ) */
 {
@@ -722,25 +710,6 @@ w_i(struct w_env *e)
 	D1(e)	= D2(e);
 
 	w_eval_quot(e, n);
-}
-
-void
-w_dip(struct w_env *e)
-/* ([b] [a] -- [b]) */
-{
-	struct w_node *t, *n;
-
-	W_ASSERT_TWO_ARGS(e);
-	W_ASSERT_ONE_TYPE(e, W_QUOT, "cannot evaluate a non-quotation");
-
-	n	= D1(e);
-	t	= D2(e);
-	D1(e)	= D3(e);
-
-	w_eval_quot(e, n);
-
-	t->next	= D1(e);
-	D1(e)	= t;
 }
 
 void
@@ -834,9 +803,7 @@ struct w_builtin initial_dict[] = {
 	{ "POP",	w_pop		},
 	{ "CAT",	w_cat		},
 	{ "CONS",	w_cons		},
-	{ "UNIT",	w_unit		},
 	{ "I",		w_i		},
-	{ "DIP",	w_dip		},
 	{ "TRUE",	w_true		},
 	{ "FALSE",	w_false		},
 	{ "FIXNUM?",	w_fixnump	},
