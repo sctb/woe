@@ -741,16 +741,6 @@ w_false(struct w_env *e)
 }
 
 void
-w_not(struct w_env *e)
-/* (? -- ?) */
-{
-	W_ASSERT_ONE_ARG(e);
-	W_ASSERT_ONE_TYPE(e, W_BOOL, "logical not requires a boolean");
-
-	D1(e)->value.fixnum = (D1(e)->value.fixnum == 0 ? -1 : 0);
-}
-
-void
 w_fixnump(struct w_env *e)
 /* (a -- ?) */
 {
@@ -822,7 +812,6 @@ struct w_builtin initial_dict[] = {
 	{ "DIP",	w_dip		},
 	{ "TRUE",	w_true		},
 	{ "FALSE",	w_false		},
-	{ "NOT",	w_not		},
 	{ "FIXNUM?",	w_fixnump	},
 	{ "FLONUM?",	w_flonump	},
 	{ "BOOLEAN?",	w_boolp		},

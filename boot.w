@@ -23,6 +23,8 @@
 : unless (? [f] -- ) swap [pop] [i] branch ;
 : choice (? t f -- t/f) dig2 [pop] [swap pop] branch ;
 
+: not (? -- ?) false true choice ;
+
 : loop ([p] -- ) [i] keep [loop] cons when ;
 : do ([p] [a] -- p [a]) dup dip2 ;
 : while ([p] [a] -- ) swap do cat [loop] cons when ;
