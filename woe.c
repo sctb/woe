@@ -236,9 +236,9 @@ w_pn(struct w_node *n)
 }
 
 void
-w_init_reader(struct w_reader *r, FILE *stream)
+w_init_reader(struct w_reader *r, FILE *f)
 {
-	r->stream	= stream;
+	r->stream	= f;
 	r->line		= 1;
 	r->column	= 0;
 	r->buflen	= 0;
@@ -839,6 +839,46 @@ w_make_builtin_dict()
 }
 
 void
+w_load(struct w_env *e, FILE *f, char *prompt)
+{
+	struct w_token	t;
+	struct w_reader	r;
+	struct w_node	*l;
+	struct w_word	*w;
+
+	w_init_reader(&r, f);
+
+	l = NULL;
+prompt:
+	if (prompt != NULL)
+		printf("%s ", prompt);
+
+	while (1)
+	{
+		switch ((t = w_read_token(&r)).type)
+		{
+		case WT_EOF:
+			fclose(f);
+			return;
+		case WT_EOL:
+			w_eval(e);
+			goto prompt;
+		case WT_COLON:
+			if ((w = w_read_def(&r)) != NULL) {
+				w->next	= e->dict;
+				e->dict	= w;
+			}
+			break;
+		case WT_SEMICOL:
+		case WT_RSQUARE:
+			break;
+		default:
+			l = w_extend(w_read_atom(&r, t), &e->code, &l);
+		}
+	}
+}
+
+void
 w_init_env(struct w_env *e)
 {
 	e->data	= NULL;
@@ -849,41 +889,19 @@ w_init_env(struct w_env *e)
 int
 main(int argc, char *argv[])
 {
-	struct w_token	t;
-	struct w_reader	r;
 	struct w_env	e;
-	struct w_node	*l;
-	struct w_word	*w;
+	FILE		*f;
 
-	w_init_reader(&r, stdin);
 	w_init_env(&e);
 
-	l = NULL;
-prompt:
-	printf("OK ");
-
-	while (1)
-	{
-		switch ((t = w_read_token(&r)).type)
-		{
-		case WT_EOF:
-			return (0);
-		case WT_EOL:
-			w_eval(&e);
-			goto prompt;
-		case WT_COLON:
-			if ((w = w_read_def(&r)) != NULL) {
-				w->next	= e.dict;
-				e.dict	= w;
-			}
-			break;
-		case WT_SEMICOL:
-		case WT_RSQUARE:
-			break;
-		default:
-			l = w_extend(w_read_atom(&r, t), &e.code, &l);
-		}
+	if (argc == 2) {
+		if ((f = fopen(argv[1], "r")) != NULL)
+			w_load(&e, f, NULL);
+		else
+			perror(argv[1]);
 	}
+
+	w_load(&e, stdin, "W>");
 
 	return (0);
 }
