@@ -50,10 +50,10 @@
 	}								\
 
 #define W_TYPE_PREDICATE(e, typ)					\
-	W_MAKE_NODE(n, W_BOOL, fixnum, -1);				\
+	W_MAKE_NODE(n, W_BOOL, fixnum, -1L);				\
 	W_ASSERT_ONE_ARG(e);						\
 	if (D1(e)->type == typ)						\
-		n->value.fixnum = 0;					\
+		n->value.fixnum = 0L;					\
 	n->next	= D2(e);						\
 	D1(e)	= n;							\
 
@@ -161,32 +161,37 @@ w_copy_string(const char *o)
 static struct w_node*
 w_copy_node(const struct w_node *o)
 {
-	struct w_node *n, *q, *t;
-
 	if (o == NULL)
 		return (NULL);
+	else {
+		struct w_node *n, *q;
 
-	n	= w_alloc_node();
-	n->type	= o->type;
+		n	= w_alloc_node();
+		n->type	= o->type;
 
-	switch (n->type) {
-	case W_STRING:
-		n->value.string	= w_copy_string(o->value.string);
-		break;
-	case W_QUOT:
-		n->value.node = q = w_copy_node(o->value.node);
-		t = o->value.node;
-		while (t != NULL) {
-			q->next = w_copy_node(t->next);
-			q	= q->next;
-			t	= t->next;
+		switch (n->type) {
+		case W_STRING:
+			n->value.string	= w_copy_string(o->value.string);
+			break;
+		case W_QUOT:
+		{
+			struct w_node *t;
+
+			n->value.node = q = w_copy_node(o->value.node);
+			t = o->value.node;
+			while (t != NULL) {
+				q->next = w_copy_node(t->next);
+				q	= q->next;
+				t	= t->next;
+			}
+			break;
 		}
-		break;
-	default:
-		n->value = o->value;
-	}
+		default:
+			n->value = o->value;
+		}
 
-	return (n);
+		return (n);
+	}
 }
 
 static void w_pn(const struct w_node *n);
@@ -209,7 +214,7 @@ w_p(const struct w_node *n)
 		printf("%.2f ", n->value.flonum);
 		break;
 	case W_BOOL:
-		if (n->value.fixnum == 0)
+		if (n->value.fixnum == 0L)
 			printf("true ");
 		else
 			printf("false ");
@@ -603,11 +608,10 @@ w_call(const struct w_word *w, struct w_env *e)
 static void
 w_eval(struct w_env *e)
 {
-	struct w_node *n;
-	struct w_word *w;
-
 	while (C1(e) != NULL) {
 		if (C1(e)->type == W_SYMBOL) {
+			struct w_word *w;
+
 			if ((w = w_lookup(e->dict, C1(e)->value.string))) {
 				C1(e) = C2(e);
 				w_call(w, e);
@@ -615,6 +619,8 @@ w_eval(struct w_env *e)
 				w_runtime_error(e, "undefined word");
 			}
 		} else {
+			struct w_node *n;
+
 			n	= w_copy_node(C1(e));
 			n->next	= D1(e);
 			D1(e)	= n;
@@ -716,7 +722,7 @@ w_true(struct w_env *e)
 {
 	struct w_node *n;
 
-	n = w_make_bool(0);
+	n = w_make_bool(0L);
 
 	n->next	= D1(e);
 	D1(e)	= n;
@@ -728,7 +734,7 @@ w_false(struct w_env *e)
 {
 	struct w_node *n;
 
-	n = w_make_bool(-1);
+	n = w_make_bool(-1L);
 
 	n->next	= D1(e);
 	D1(e)	= n;
@@ -778,7 +784,7 @@ w_branch(struct w_env *e)
 	W_ASSERT_THREE_ARGS(e);
 	W_ASSERT_TWO_TYPE(e, W_QUOT, "cannot branch to a non-quotation");
 
-	if (D3(e)->value.fixnum == 0)
+	if (D3(e)->value.fixnum == 0L)
 		n = D2(e);
 	else
 		n = D1(e);
@@ -816,7 +822,7 @@ struct w_builtin initial_dict[] = {
 static struct w_word*
 w_make_builtin_dict()
 {
-	int i, len;
+	int			i, len;
 	struct w_word		*p;
 	struct w_word		*w;
 	struct w_builtin	*d;
@@ -842,7 +848,6 @@ w_load(struct w_env *e, FILE *f, const char *prompt)
 	struct w_token	t;
 	struct w_reader	r;
 	struct w_node	*l;
-	struct w_word	*w;
 
 	w_init_reader(&r, f);
 
@@ -862,11 +867,15 @@ prompt:
 			w_eval(e);
 			goto prompt;
 		case WT_COLON:
+		{
+			struct w_word *w;
+
 			if ((w = w_read_def(&r)) != NULL) {
 				w->next	= e->dict;
 				e->dict	= w;
 			}
 			break;
+		}
 		case WT_SEMICOL:
 		case WT_RSQUARE:
 			break;
@@ -887,12 +896,12 @@ w_init_env(struct w_env *e)
 int
 main(int argc, char *argv[])
 {
-	struct w_env	e;
-	FILE		*f;
+	struct w_env e;
 
 	w_init_env(&e);
 
 	if (argc == 2) {
+		FILE *f;
 		if ((f = fopen(argv[1], "r")) != NULL)
 			w_load(&e, f, NULL);
 		else
