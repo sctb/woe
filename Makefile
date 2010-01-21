@@ -1,7 +1,7 @@
 PROG	= woe
 
 CC	?= cc
-CFLAGS	+= -Wall -ansi -pedantic
+CFLAGS	+= -std=c89 -Wall -pedantic
 
 all:	options $(PROG)
 
