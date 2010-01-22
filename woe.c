@@ -163,7 +163,7 @@ w_copy_node(const struct w_node *o)
 {
 	if (o == NULL)
 		return (NULL);
-	else {
+	{
 		struct w_node *n, *q;
 
 		n	= w_alloc_node();
@@ -328,8 +328,8 @@ w_read_number(struct w_reader *r)
 
 				if (pos > 1 || (pos == 1 && buffer[0] != '-'))
 					break;
-				else
-					return (t);
+
+				return (t);
 			}
 		}
 		buffer[pos++] = c;
@@ -360,12 +360,11 @@ w_read_symbol(struct w_reader *r)
 
 	while ((c = w_read_char(r)) != '\0')
 	{
-		if (W_SPACEP(c) || c == '\n' || strchr("[]:;", c))
-		{
+		if (W_SPACEP(c) || c == '\n' || strchr("[]:;", c)) {
 			w_unread_char(r);
 			break;
-		} else
-			buffer[pos++] = c;
+		}
+		buffer[pos++] = c;
 	}
 
 	buffer[pos++] = '\0';
@@ -561,11 +560,11 @@ w_read_def(struct w_reader *r)
 		w->quot	= w_read_quot(r);
 
 		return (w);
-	} else {
-		w_read_error("expected word name after ':'");
-
-		return (NULL);
 	}
+
+	w_read_error("expected word name after ':'");
+
+	return (NULL);
 }
 
 static struct w_word*
