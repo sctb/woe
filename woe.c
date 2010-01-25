@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define W_HEAP_SIZE 1024*512
+
 #define W_SPACEP(x) (x == ' ' || x == '\t')
 
 #define D1(e) e->data
@@ -13,9 +15,9 @@
 #define C1(e) e->code
 #define C2(e) e->code->next
 
-#define W_MAKE_NODE(x, typ, fld, val)					\
+#define W_MAKE_NODE(e, x, typ, fld, val)					\
 	struct w_node *x;						\
-	x		= w_alloc_node();				\
+	x		= w_alloc_node(e);				\
 	x->type		= typ;						\
 	x->value.fld	= val;						\
 
@@ -50,7 +52,7 @@
 	}								\
 
 #define W_TYPE_PREDICATE(e, typ)					\
-	W_MAKE_NODE(n, W_BOOL, fixnum, -1L);				\
+	W_MAKE_NODE(e, n, W_BOOL, fixnum, -1L);				\
 	W_ASSERT_ONE_ARG(e);						\
 	if (D1(e)->type == typ)						\
 		n->value.fixnum = 0L;					\
@@ -111,10 +113,17 @@ struct w_node {
 	struct	w_node	*next;
 };
 
+struct w_heap {
+	char 	*data;
+	size_t	used;
+	size_t	size;
+};
+
 struct w_env {
 	struct w_node *data;
 	struct w_node *code;
 	struct w_word *dict;
+	struct w_heap *heap;
 };
 
 struct w_word {
@@ -129,58 +138,69 @@ struct w_builtin {
 	void (*builtin)(struct w_env*);
 };
 
-static struct w_node*
-w_alloc_node()
+static void*
+w_alloc(struct w_env *e, size_t n)
 {
-	return ((struct w_node*)malloc(sizeof(struct w_node)));
+	void *p;
+
+	p 		= e->heap->data + e->heap->used;
+	e->heap->used	+= n;
+
+	return (p);
+}
+
+static struct w_node*
+w_alloc_node(struct w_env *e)
+{
+	return ((struct w_node*)w_alloc(e, sizeof(struct w_node)));
 }
 
 static struct w_word*
-w_alloc_word()
+w_alloc_word(struct w_env *e)
 {
-	return ((struct w_word*)malloc(sizeof(struct w_word)));
+	return ((struct w_word*)w_alloc(e, sizeof(struct w_word)));
 }
 
 static char*
-w_alloc_string(size_t len)
+w_alloc_string(struct w_env *e, size_t len)
 {
-	return ((char*)malloc(sizeof(char)*len));
+	return ((char*)w_alloc(e, sizeof(char)*len));
 }
 
 static char*
-w_copy_string(const char *o)
+w_copy_string(struct w_env *e, const char *o)
 {
 	char *s;
 
-	s = w_alloc_string(strlen(o));
+	s = w_alloc_string(e, strlen(o));
 	strcpy(s, o);
 
 	return (s);
 }
 
 static struct w_node*
-w_copy_node(const struct w_node *o)
+w_copy_node(struct w_env *e, const struct w_node *o)
 {
 	if (o == NULL)
 		return (NULL);
 	{
 		struct w_node *n, *q;
 
-		n	= w_alloc_node();
+		n	= w_alloc_node(e);
 		n->type	= o->type;
 
 		switch (n->type) {
 		case W_STRING:
-			n->value.string	= w_copy_string(o->value.string);
+			n->value.string	= w_copy_string(e, o->value.string);
 			break;
 		case W_QUOT:
 		{
 			struct w_node *t;
 
-			n->value.node = q = w_copy_node(o->value.node);
+			n->value.node = q = w_copy_node(e, o->value.node);
 			t = o->value.node;
 			while (t != NULL) {
-				q->next = w_copy_node(t->next);
+				q->next = w_copy_node(e, t->next);
 				q	= q->next;
 				t	= t->next;
 			}
@@ -281,7 +301,7 @@ w_unread_char(struct w_reader *r)
 }
 
 static struct w_token
-w_read_string(struct w_reader *r)
+w_read_string(struct w_env *e, struct w_reader *r)
 {
 	size_t	pos;
 	char	c;
@@ -300,7 +320,7 @@ w_read_string(struct w_reader *r)
 	}
 
 	buffer[pos++] = '\0';
-	t.value.string = w_alloc_string(pos);
+	t.value.string = w_alloc_string(e, pos);
 	strncpy(t.value.string, buffer, pos);
 
 	return (t);
@@ -348,7 +368,7 @@ w_read_number(struct w_reader *r)
 }
 
 static struct w_token
-w_read_symbol(struct w_reader *r)
+w_read_symbol(struct w_env *e, struct w_reader *r)
 {
 	size_t	pos;
 	char	c;
@@ -368,14 +388,14 @@ w_read_symbol(struct w_reader *r)
 	}
 
 	buffer[pos++] = '\0';
-	t.value.string = w_alloc_string(pos);
+	t.value.string = w_alloc_string(e, pos);
 	strncpy(t.value.string, buffer, pos);
 
 	return (t);
 }
 
 static struct w_token
-w_read_token(struct w_reader *r)
+w_read_token(struct w_env *e, struct w_reader *r)
 {
 	char	c;
 	struct	w_token t;
@@ -414,7 +434,7 @@ restart:
 		t.type = WT_SEMICOL;
 		return (t);
 	case '"':
-		return (w_read_string(r));
+		return (w_read_string(e, r));
 	case '-':
 		w_unread_char(r);
 		if ((t = w_read_number(r)).type != WT_SYMBOL)
@@ -424,7 +444,7 @@ restart:
 		if (isdigit(c))
 			t = w_read_number(r);
 		else
-			t = w_read_symbol(r);
+			t = w_read_symbol(e, r);
 		return (t);
 	}
 }
@@ -443,49 +463,49 @@ w_runtime_error(struct w_env *e, const char *msg)
 }
 
 static struct w_node*
-w_make_fixnum(long value)
+w_make_fixnum(struct w_env *e, long value)
 {
-	W_MAKE_NODE(n, W_FIXNUM, fixnum, value);
+	W_MAKE_NODE(e, n, W_FIXNUM, fixnum, value);
 
 	return (n);
 }
 
 static struct w_node*
-w_make_flonum(double value)
+w_make_flonum(struct w_env *e, double value)
 {
-	W_MAKE_NODE(n, W_FLONUM, flonum, value);
+	W_MAKE_NODE(e, n, W_FLONUM, flonum, value);
 
 	return (n);
 }
 
 static struct w_node*
-w_make_bool(long value)
+w_make_bool(struct w_env *e, long value)
 {
-	W_MAKE_NODE(n, W_BOOL, fixnum, value);
+	W_MAKE_NODE(e, n, W_BOOL, fixnum, value);
 
 	return (n);
 }
 
 static struct w_node*
-w_make_string(char *value)
+w_make_string(struct w_env *e, char *value)
 {
-	W_MAKE_NODE(n, W_STRING, string, value);
+	W_MAKE_NODE(e, n, W_STRING, string, value);
 
 	return (n);
 }
 
 static struct w_node*
-w_make_symbol(char *value)
+w_make_symbol(struct w_env *e, char *value)
 {
-	W_MAKE_NODE(n, W_SYMBOL, string, value);
+	W_MAKE_NODE(e, n, W_SYMBOL, string, value);
 
 	return (n);
 }
 
 static struct w_node*
-w_make_quot()
+w_make_quot(struct w_env *e)
 {
-	W_MAKE_NODE(n, W_QUOT, node, NULL);
+	W_MAKE_NODE(e, n, W_QUOT, node, NULL);
 
 	return (n);
 }
@@ -503,61 +523,61 @@ w_extend(struct w_node *n, struct w_node **h, struct w_node **l)
 	return (n);
 }
 
-static struct w_node* w_read_quot(struct w_reader*);
+static struct w_node* w_read_quot(struct w_env *e, struct w_reader*);
 
 static struct w_node*
-w_read_atom(struct w_reader *r, struct w_token t)
+w_read_atom(struct w_env *e, struct w_reader *r, struct w_token t)
 {
 	switch (t.type)
 	{
 	case WT_FIXNUM:
-		return (w_make_fixnum(t.value.fixnum));
+		return (w_make_fixnum(e, t.value.fixnum));
 	case WT_FLONUM:
-		return (w_make_flonum(t.value.flonum));
+		return (w_make_flonum(e, t.value.flonum));
 	case WT_STRING:
-		return (w_make_string(t.value.string));
+		return (w_make_string(e, t.value.string));
 	case WT_SYMBOL:
-		return (w_make_symbol(t.value.string));
+		return (w_make_symbol(e, t.value.string));
 	case WT_LSQUARE:
-		return (w_read_quot(r));
+		return (w_read_quot(e, r));
 	default:
 		return (NULL);
 	}
 }
 
 static struct w_node*
-w_read_quot(struct w_reader *r)
+w_read_quot(struct w_env *e, struct w_reader *r)
 {
 	struct w_token	t;
 	struct w_node	*l, *n;
 
-	n = w_make_quot();
+	n = w_make_quot(e);
 	l = NULL;
 
-	while ((t = w_read_token(r)).type <= WT_SYMBOL) {
+	while ((t = w_read_token(e, r)).type <= WT_SYMBOL) {
 		if (t.type == WT_EOF) {
 			w_read_error("unexpected end-of-file");
 
 			return (NULL);
 		}
 		if (t.type != WT_EOL)
-			l = w_extend(w_read_atom(r, t), &n->value.node, &l);
+			l = w_extend(w_read_atom(e, r, t), &n->value.node, &l);
 	}
 
 	return (n);
 }
 
 static struct w_word*
-w_read_def(struct w_reader *r)
+w_read_def(struct w_env *e, struct w_reader *r)
 {
 	struct w_token	t;
 	struct w_word	*w;
 
-	w = w_alloc_word();
+	w = w_alloc_word(e);
 
-	if ((t = w_read_token(r)).type == WT_SYMBOL) {
+	if ((t = w_read_token(e, r)).type == WT_SYMBOL) {
 		w->name	= t.value.string;
-		w->quot	= w_read_quot(r);
+		w->quot	= w_read_quot(e, r);
 
 		return (w);
 	}
@@ -588,6 +608,7 @@ w_eval_quot(struct w_env* e, struct w_node* n)
 
 	i.data = D1(e);
 	i.dict = e->dict;
+	i.heap = e->heap;
 	i.code = n->value.node;
 
 	w_eval(&i);
@@ -620,7 +641,7 @@ w_eval(struct w_env *e)
 		} else {
 			struct w_node *n;
 
-			n	= w_copy_node(C1(e));
+			n	= w_copy_node(e, C1(e));
 			n->next	= D1(e);
 			D1(e)	= n;
 			C1(e)	= C2(e);
@@ -650,7 +671,7 @@ w_dup(struct w_env *e)
 
 	W_ASSERT_ONE_ARG(e);
 
-	n	= w_copy_node(D1(e));
+	n	= w_copy_node(e, D1(e));
 	n->next	= D1(e);
 	D1(e)	= n;
 }
@@ -721,7 +742,7 @@ w_true(struct w_env *e)
 {
 	struct w_node *n;
 
-	n = w_make_bool(0L);
+	n = w_make_bool(e, 0L);
 
 	n->next	= D1(e);
 	D1(e)	= n;
@@ -733,7 +754,7 @@ w_false(struct w_env *e)
 {
 	struct w_node *n;
 
-	n = w_make_bool(-1L);
+	n = w_make_bool(e, -1L);
 
 	n->next	= D1(e);
 	D1(e)	= n;
@@ -819,7 +840,7 @@ struct w_builtin initial_dict[] = {
 };
 
 static struct w_word*
-w_make_builtin_dict()
+w_make_builtin_dict(struct w_env *e)
 {
 	int			i, len;
 	struct w_word		*p;
@@ -831,7 +852,7 @@ w_make_builtin_dict()
 	p	= NULL;
 
 	for (i = 0; i < len; i++) {
-		w		= w_alloc_word();
+		w		= w_alloc_word(e);
 		w->name		= d[i].name;
 		w->builtin	= d[i].builtin;
 		w->next		= p;
@@ -857,7 +878,7 @@ prompt:
 
 	while (1)
 	{
-		switch ((t = w_read_token(&r)).type)
+		switch ((t = w_read_token(e, &r)).type)
 		{
 		case WT_EOF:
 			fclose(f);
@@ -869,7 +890,7 @@ prompt:
 		{
 			struct w_word *w;
 
-			if ((w = w_read_def(&r)) != NULL) {
+			if ((w = w_read_def(e, &r)) != NULL) {
 				w->next	= e->dict;
 				e->dict	= w;
 			}
@@ -879,25 +900,36 @@ prompt:
 		case WT_RSQUARE:
 			break;
 		default:
-			l = w_extend(w_read_atom(&r, t), &e->code, &l);
+			l = w_extend(w_read_atom(e, &r, t), &e->code, &l);
 		}
 	}
 }
 
 static void
-w_init_env(struct w_env *e)
+w_init_env(struct w_env *e, struct w_heap *h)
 {
 	e->data	= NULL;
 	e->code = NULL;
-	e->dict = w_make_builtin_dict();
+	e->heap = h;
+	e->dict = w_make_builtin_dict(e);
 }
 
 int
 main(int argc, char *argv[])
 {
-	struct w_env e;
+	struct w_env 	e;
+	struct w_heap 	h;
 
-	w_init_env(&e);
+	h.used	= 0;
+	h.size	= W_HEAP_SIZE;
+	h.data	= (char*)malloc(h.size);
+
+	if (h.data == NULL) {
+		perror("ERROR:");
+		exit (1);
+	}
+
+	w_init_env(&e, &h);
 
 	if (argc == 2) {
 		FILE *f;
