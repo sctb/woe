@@ -15,8 +15,8 @@
 #define C1(e) e->code
 #define C2(e) e->code->next
 
-#define W_MAKE_NODE(e, x, typ, fld, val)					\
-	struct w_node *x;						\
+#define W_MAKE_NODE(e, x, typ, fld, val)				\
+	struct w_node 	*x;						\
 	x		= w_alloc_node(e);				\
 	x->type		= typ;						\
 	x->value.fld	= val;						\
