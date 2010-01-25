@@ -3,7 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define W_HEAP_SIZE 1024*512
+#define W_HEAP_SIZE	1024*512
+#define W_TRUE		1
+#define W_FALSE		0
 
 #define W_SPACEP(x) (x == ' ' || x == '\t')
 
@@ -16,7 +18,7 @@
 #define C2(e) e->code->next
 
 #define W_MAKE_NODE(e, x, typ, fld, val)				\
-	struct w_node 	*x;						\
+	struct w_node	*x;						\
 	x		= w_alloc_node(e);				\
 	x->type		= typ;						\
 	x->value.fld	= val;						\
@@ -52,10 +54,10 @@
 	}								\
 
 #define W_TYPE_PREDICATE(e, typ)					\
-	W_MAKE_NODE(e, n, W_BOOL, fixnum, -1L);				\
+	W_MAKE_NODE(e, n, W_BOOL, fixnum, W_FALSE);				\
 	W_ASSERT_ONE_ARG(e);						\
 	if (D1(e)->type == typ)						\
-		n->value.fixnum = 0L;					\
+		n->value.fixnum = W_TRUE;					\
 	n->next	= D2(e);						\
 	D1(e)	= n;							\
 
@@ -114,7 +116,7 @@ struct w_node {
 };
 
 struct w_heap {
-	char 	*data;
+	char	*data;
 	size_t	used;
 	size_t	size;
 };
@@ -143,7 +145,7 @@ w_alloc(struct w_env *e, size_t n)
 {
 	void *p;
 
-	p 		= e->heap->data + e->heap->used;
+	p		= e->heap->data + e->heap->used;
 	e->heap->used	+= n;
 
 	return (p);
@@ -234,7 +236,7 @@ w_p(const struct w_node *n)
 		printf("%.2f ", n->value.flonum);
 		break;
 	case W_BOOL:
-		if (n->value.fixnum == 0L)
+		if (n->value.fixnum)
 			printf("true ");
 		else
 			printf("false ");
@@ -742,7 +744,7 @@ w_true(struct w_env *e)
 {
 	struct w_node *n;
 
-	n = w_make_bool(e, 0L);
+	n = w_make_bool(e, W_TRUE);
 
 	n->next	= D1(e);
 	D1(e)	= n;
@@ -754,7 +756,7 @@ w_false(struct w_env *e)
 {
 	struct w_node *n;
 
-	n = w_make_bool(e, -1L);
+	n = w_make_bool(e, W_FALSE);
 
 	n->next	= D1(e);
 	D1(e)	= n;
@@ -804,7 +806,7 @@ w_branch(struct w_env *e)
 	W_ASSERT_THREE_ARGS(e);
 	W_ASSERT_TWO_TYPE(e, W_QUOT, "cannot branch to a non-quotation");
 
-	if (D3(e)->value.fixnum == 0L)
+	if (D3(e)->value.fixnum)
 		n = D2(e);
 	else
 		n = D1(e);
@@ -863,7 +865,7 @@ w_make_builtin_dict(struct w_env *e)
 }
 
 static void
-w_load(struct w_env *e, FILE *f, const char *prompt)
+w_load(struct w_env *e, FILE *f, char prompt)
 {
 	struct w_token	t;
 	struct w_reader	r;
@@ -873,8 +875,8 @@ w_load(struct w_env *e, FILE *f, const char *prompt)
 
 	l = NULL;
 prompt:
-	if (prompt != NULL)
-		printf("%s ", prompt);
+	if (prompt)
+		printf("(USED: %dB) ", (int)e->heap->used);
 
 	while (1)
 	{
@@ -917,8 +919,8 @@ w_init_env(struct w_env *e, struct w_heap *h)
 int
 main(int argc, char *argv[])
 {
-	struct w_env 	e;
-	struct w_heap 	h;
+	struct w_env	e;
+	struct w_heap	h;
 
 	h.used	= 0;
 	h.size	= W_HEAP_SIZE;
@@ -934,12 +936,12 @@ main(int argc, char *argv[])
 	if (argc == 2) {
 		FILE *f;
 		if ((f = fopen(argv[1], "r")) != NULL)
-			w_load(&e, f, NULL);
+			w_load(&e, f, W_FALSE);
 		else
 			perror(argv[1]);
 	}
 
-	w_load(&e, stdin, "W>");
+	w_load(&e, stdin, W_TRUE);
 
 	return (0);
 }
