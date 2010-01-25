@@ -172,7 +172,7 @@ w_copy_string(struct w_env *e, const char *o)
 {
 	char *s;
 
-	s = w_alloc_string(e, strlen(o));
+	s = w_alloc_string(e, strlen(o) + 1);
 	strcpy(s, o);
 
 	return (s);
