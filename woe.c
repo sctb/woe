@@ -10,12 +10,12 @@
 #define W_SPACEP(x) (x == ' ' || x == '\t')
 
 #define D1(e) e->data
-#define D2(e) e->data->next
-#define D3(e) e->data->next->next
-#define D4(e) e->data->next->next->next
+#define D2(e) D1(e)->next
+#define D3(e) D2(e)->next
+#define D4(e) D3(e)->next
 
 #define C1(e) e->code
-#define C2(e) e->code->next
+#define C2(e) C1(e)->next
 
 #define W_ASSERT_ONE_ARG(e)						\
 	if (D1(e) == NULL) {						\
