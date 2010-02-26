@@ -17,15 +17,6 @@
 #define C1(e) e->code
 #define C2(e) e->code->next
 
-#define W_MAKE_NODE(h, x, typ, fld, val)				\
-	do {								\
-		x		= w_alloc_node(h);			\
-		x->type		= typ;					\
-		x->value.fld	= val;					\
-		x->to		= NULL;					\
-		x->next		= NULL;					\
-	} while (0);							\
-
 #define W_ASSERT_ONE_ARG(e)						\
 	if (D1(e) == NULL) {						\
 		w_runtime_error(e, "stack underflow");			\
@@ -59,7 +50,7 @@
 #define W_TYPE_PREDICATE(e, typ)					\
 	do {								\
 		struct w_node *_n;					\
-		W_MAKE_NODE(e->data_heap, _n, W_BOOL, fixnum, W_FALSE);	\
+		_n = w_make_bool(e->data_heap, W_FALSE);		\
 		W_ASSERT_ONE_ARG(e);					\
 		if (D1(e)->type == typ)					\
 			_n->value.fixnum = W_TRUE;			\
@@ -175,24 +166,6 @@ w_alloc(struct w_heap *h, size_t n)
 	return (p);
 }
 
-static struct w_node*
-w_alloc_node(struct w_heap *h)
-{
-	return ((struct w_node*)w_alloc(h, sizeof(struct w_node)));
-}
-
-static struct w_word*
-w_alloc_word(struct w_heap *h)
-{
-	return ((struct w_word*)w_alloc(h, sizeof(struct w_word)));
-}
-
-static char*
-w_alloc_string(struct w_heap *h, size_t len)
-{
-	return ((char*)w_alloc(h, sizeof(char)*len));
-}
-
 static void w_pn(const struct w_node *n);
 
 static void
@@ -297,7 +270,7 @@ w_read_string(struct w_heap *h, struct w_reader *r)
 	}
 
 	buffer[pos++] = '\0';
-	t.value.string = w_alloc_string(h, pos);
+	t.value.string = (char*)w_alloc(h, sizeof(char)*pos);
 	strncpy(t.value.string, buffer, pos);
 
 	return (t);
@@ -362,7 +335,7 @@ w_read_symbol(struct w_heap *h, struct w_reader *r)
 	}
 
 	buffer[pos++] = '\0';
-	t.value.string = w_alloc_string(h, pos);
+	t.value.string = (char*)w_alloc(h, sizeof(char)*pos);
 	strncpy(t.value.string, buffer, pos);
 
 	return (t);
@@ -436,11 +409,24 @@ w_runtime_error(struct w_env *e, const char *msg)
 }
 
 static struct w_node*
+w_make_node(struct w_heap *h)
+{
+	struct w_node *n;
+
+	n = (struct w_node*)w_alloc(h, sizeof(struct w_node));
+	memset(n, 0, sizeof(struct w_node));
+
+	return (n);
+}
+
+static struct w_node*
 w_make_fixnum(struct w_heap *h, long value)
 {
 	struct w_node *n;
 
-	W_MAKE_NODE(h, n, W_FIXNUM, fixnum, value);
+	n			= w_make_node(h);
+	n->type 		= W_FIXNUM;
+	n->value.fixnum 	= value;
 
 	return (n);
 }
@@ -450,7 +436,9 @@ w_make_flonum(struct w_heap *h, double value)
 {
 	struct w_node *n;
 
-	W_MAKE_NODE(h, n, W_FLONUM, flonum, value);
+	n			= w_make_node(h);
+	n->type 		= W_FLONUM;
+	n->value.flonum 	= value;
 
 	return (n);
 }
@@ -460,7 +448,9 @@ w_make_bool(struct w_heap *h, long value)
 {
 	struct w_node *n;
 
-	W_MAKE_NODE(h, n, W_BOOL, fixnum, value);
+	n			= w_make_node(h);
+	n->type 		= W_BOOL;
+	n->value.fixnum 	= value;
 
 	return (n);
 }
@@ -470,8 +460,10 @@ w_make_string(struct w_heap *h, char *value)
 {
 	struct w_node *n;
 
-	W_MAKE_NODE(h, n, W_STRING, data.bytes, value);
-	n->value.data.length = strlen(value) + 1;
+	n 			= w_make_node(h);
+	n->type 		= W_STRING;
+	n->value.data.bytes 	= value;
+	n->value.data.length 	= strlen(value) + 1;
 
 	return (n);
 }
@@ -481,8 +473,10 @@ w_make_symbol(struct w_heap *h, char *value)
 {
 	struct w_node *n;
 
-	W_MAKE_NODE(h, n, W_SYMBOL, data.bytes, value);
-	n->value.data.length = strlen(value) + 1;
+	n 			= w_make_node(h);
+	n->type 		= W_SYMBOL;
+	n->value.data.bytes 	= value;
+	n->value.data.length 	= strlen(value) + 1;
 
 	return (n);
 }
@@ -492,7 +486,8 @@ w_make_quot(struct w_heap *h)
 {
 	struct w_node *n;
 
-	W_MAKE_NODE(h, n, W_QUOT, quot, NULL);
+	n			= w_make_node(h);
+	n->type			= W_QUOT;
 
 	return (n);
 }
@@ -502,29 +497,25 @@ w_make_word(struct w_heap *h, char *name)
 {
 	struct w_word *w;
 
-	w 	= w_alloc_word(h);
+	w 	= (struct w_word*)w_alloc(h, sizeof(struct w_word));
 	w->name	= name;
 
 	return (w);
 }
 
 static struct w_node*
-w_copy_composite(struct w_heap *h, const struct w_node *o)
+w_copy_bytes(struct w_heap *h, struct w_node *n, const struct w_node *o)
 {
 	char 		*b;
-	struct w_node 	*n;
 	size_t		l;
 
 	l = o->value.data.length;
-	n = w_alloc_node(h);
 	b = w_alloc(h, l);
 
-	memcpy(n, o, sizeof(struct w_node));
 	memcpy(b, o->value.data.bytes, l);
 
 	n->value.data.bytes 	= b;
-	n->to			= NULL;
-	n->next			= NULL;
+	n->value.data.length	= l;
 
 	return (n);
 }
@@ -540,7 +531,12 @@ w_copy_node(struct w_heap *h, const struct w_node *o)
 		switch (o->type) {
 		case W_STRING:
 		case W_SYMBOL: {
-			return (w_copy_composite(h, o));
+			n 	= w_make_node(h);
+			n->type	= o->type;
+
+			w_copy_bytes(h, n, o);
+
+			return (n);
 		}
 		case W_QUOT: {
 			struct w_node *t;
@@ -559,8 +555,9 @@ w_copy_node(struct w_heap *h, const struct w_node *o)
 			return (n);
 		}
 		default:
-			W_MAKE_NODE(h, n, o->type, fixnum, 0);
-			n->value = o->value;
+			n 		= w_make_node(h);
+			n->type 	= o->type;
+			n->value 	= o->value;
 		}
 
 		return (n);
@@ -681,20 +678,13 @@ w_copy(struct w_node **p, struct w_heap *h)
 
 	if ((*p)->to == NULL) {
 		struct w_node *t;
-		t		= w_alloc_node(h);
+		t		= w_make_node(h);
 		memcpy(t, *p, sizeof(struct w_node));
 		(*p)->to	= t;
 		*p		= t;
 
-		if (W_COMPOSITEP((*p))) {
-			void	*c;
-			size_t	l;
-
-			l	= t->value.data.length;
-			c	= w_alloc(h, l);
-			memcpy(c, t->value.data.bytes, l);
-			t->value.data.bytes = (char*)c;
-		}
+		if (W_COMPOSITEP((*p)))
+			w_copy_bytes(h, t, t);
 	} else
 		*p = (*p)->to;
 }
