@@ -97,9 +97,9 @@ typedef const struct n* CN;
 
 V* ma(H h, L n) { V *p; p = h->d + h->u; h->u += n; R (p); }
 
-V w_pn(CN);
+V pns(CN);
 
-V w_p(CN n)
+V pn(CN n)
 {
   if (ZP(n)) R;
   switch (n->t) {
@@ -112,20 +112,20 @@ V w_p(CN n)
   case N_F:
     printf("%.2f", n->v.f); break;
   case N_B:
-    if (n->v.i) printf("true");
-    else printf("false");
+    if (n->v.i) printf("t");
+    else printf("f");
     break;
   case N_Q:
-    printf("["); w_pn(n->v.q); printf("]"); break;
+    printf("["); pns(n->v.q); printf("]"); break;
   }
 }
 
-V w_pn(CN n)
+V pns(CN n)
 {
   C sp; sp = 0;
   while (!ZP(n)) {
     if (sp) printf(" ");
-    w_p(n); n = n->n; sp = 1;
+    pn(n); n = n->n; sp = 1;
   }
 }
 
@@ -465,7 +465,7 @@ V w_cons(E e)
   b->n = D1(e)->v.q; D1(e)->v.q = b;
 }
 
-V w_i(E e)
+V w_e(E e)
 /* ([a] -- ) */
 {
   N n; A1(e);
@@ -473,24 +473,24 @@ V w_i(E e)
   n = D1(e); D1(e) = D2(e); eq(e, n);
 }
 
-V w_true(E e) /* ( -- ?) */
+V w_t(E e) /* ( -- ?) */
 {
   N n; n = nb(e->dh, 1); n->n = D1(e); D1(e) = n;
 }
 
-V w_false(E e)
+V w_f(E e)
 /* ( -- ?) */
 {
   N n; n = nb(e->dh, 0); n->n = D1(e); D1(e) = n;
 }
 
-V w_fixnump(E e) /* (a -- ?) */ { TP(e, N_I); }
-V w_flonump(E e) /* (a -- ?) */ { TP(e, N_F); }
-V w_boolp(E e) /* (a -- ?) */ { TP(e, N_B); }
-V w_stringp(E e) /* (a -- ?) */ { TP(e, N_S); }
-V w_quotationp(E e) /* (a -- ?) */ { TP(e, N_Q); }
+V w_ip(E e) /* (a -- ?) */ { TP(e, N_I); }
+V w_fp(E e) /* (a -- ?) */ { TP(e, N_F); }
+V w_bp(E e) /* (a -- ?) */ { TP(e, N_B); }
+V w_sp(E e) /* (a -- ?) */ { TP(e, N_S); }
+V w_qp(E e) /* (a -- ?) */ { TP(e, N_Q); }
 
-V w_branch(E e)
+V w_b(E e)
 /* (? [t] [f] -- ) */
 {
   N n; A3(e);
@@ -501,24 +501,24 @@ V w_branch(E e)
   eq(e, n);
 }
 
-V w_print(E e) /* (a -- a) */ { w_p(D1(e)); }
+V w_p(E e) /* (a -- a) */ { pn(D1(e)); }
 
 struct w id[] = {
-  { W_F,    "SWAP",         { w_swap        } },
-  { W_F,    "DUP",          { w_dup         } },
-  { W_F,    "POP",          { w_pop         } },
-  { W_F,    "CAT",          { w_cat         } },
-  { W_F,    "CONS",         { w_cons        } },
-  { W_F,    "I",            { w_i           } },
-  { W_F,    "TRUE",         { w_true        } },
-  { W_F,    "FALSE",        { w_false       } },
-  { W_F,    "FIXNUM?",      { w_fixnump     } },
-  { W_F,    "FLONUM?",      { w_flonump     } },
-  { W_F,    "BOOLEAN?",     { w_boolp       } },
-  { W_F,    "STRING?",      { w_stringp     } },
-  { W_F,    "QUOTATION?",   { w_quotationp  } },
-  { W_F,    "BRANCH",       { w_branch      } },
-  { W_F,    "PRINT",        { w_print       } }
+  { W_F, "SWAP", { w_swap } },
+  { W_F, "DUP",  { w_dup  } },
+  { W_F, "POP",  { w_pop  } },
+  { W_F, "CAT",  { w_cat  } },
+  { W_F, "CONS", { w_cons } },
+  { W_F, "E",    { w_e    } },
+  { W_F, "T",    { w_t    } },
+  { W_F, "F",    { w_f    } },
+  { W_F, "I?",   { w_ip   } },
+  { W_F, "F?",   { w_fp   } },
+  { W_F, "B?",   { w_bp   } },
+  { W_F, "S?",   { w_sp   } },
+  { W_F, "Q?",   { w_qp   } },
+  { W_F, "?",    { w_b    } },
+  { W_F, "p",    { w_p    } }
 };
 
 W nd(H h)
