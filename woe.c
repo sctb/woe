@@ -39,13 +39,10 @@
 
 #define TP(e, a)                                \
   do {                                          \
-    N _n;                                       \
-    _n = nb(e->dh, 0);                          \
-    A1(e);                                      \
+    N _n; _n = nb(e->dh, 0); A1(e);             \
     if (D1(e)->t == a) _n->v.i = 1;             \
-    _n->n = D2(e);                              \
-    D1(e) = _n;                                 \
-  } while (0);                                  \
+    _n->n = D2(e); D1(e) = _n;                  \
+  } while (0);
 
 #define BYTESP(n) (n->t == N_S || n->t == N_Y)
 
@@ -125,34 +122,31 @@ V w_p(CN n)
   switch (n->t)
   {
   case N_S:
-    printf("\"%s\" ", n->v.d.b);
-    break;
+    printf("\"%s\"", n->v.d.b); break;
+  case N_Y:
+    printf("%s", n->v.d.b); break;
   case N_I:
-    printf("%ld ", n->v.i);
-    break;
+    printf("%ld", n->v.i); break;
   case N_F:
-    printf("%.2f ", n->v.f);
-    break;
+    printf("%.2f", n->v.f); break;
   case N_B:
-    if (n->v.i)
-      printf("true ");
-    else
-      printf("false ");
+    if (n->v.i) printf("true");
+    else printf("false");
     break;
   case N_Q:
-    printf("[ ");
-    w_pn(n->v.q);
-    printf("]");
-    break;
-  case N_Y:
-    printf("%s ", n->v.d.b);
-    break;
+    printf("["); w_pn(n->v.q); printf("]"); break;
   }
 }
 
 V w_pn(CN n)
 {
-  while (!ZP(n)) { w_p(n); n = n->n; }
+  C sp;
+  sp = 0;
+  while (!ZP(n)) {
+    if (sp) printf(" ");
+    w_p(n); n = n->n;
+    sp = 1;
+  }
 }
 
 V ip(P p, FILE *f)
@@ -216,10 +210,7 @@ T ri(P p)
         t.t = T_F;
       else {
         uc(p);
-
-        if (l > 1 || (l == 1 && b[0] != '-'))
-          break;
-
+        if (l > 1 || (l == 1 && b[0] != '-')) break;
         R (t);
       }
     }
@@ -278,50 +269,24 @@ restart:
 
   switch (c)
   {
-  case '\n':
-    t.t = T_EL;
-    R (t);
-  case '\0':
-    t.t = T_EF;
-    R (t);
-  case '[':
-    t.t = T_LQ;
-    R (t);
-  case ']':
-    t.t = T_RQ;
-    R (t);
-  case ':':
-    t.t = T_CL;
-    R (t);
-  case ';':
-    t.t = T_SCL;
-    R (t);
-  case '"':
-    R (rs(h, p));
-  case '-':
-    uc(p);
-    if ((t = ri(p)).t != T_Y)
-      R (t);
+  case '\n': t.t = T_EL;  R (t);
+  case '\0': t.t = T_EF;  R (t);
+  case '[':  t.t = T_LQ;  R (t);
+  case ']':  t.t = T_RQ;  R (t);
+  case ':':  t.t = T_CL;  R (t);
+  case ';':  t.t = T_SCL; R (t);
+  case '"':  R (rs(h, p));
+  case '-':  uc(p); if ((t = ri(p)).t != T_Y) R (t);
   default:
     uc(p);
-    if (isdigit(c))
-      t = ri(p);
-    else
-      t = ry(h, p);
+    if (isdigit(c)) t = ri(p);
+    else t = ry(h, p);
     R (t);
   }
 }
 
-V pe(CS s)
-{
-  printf("PARSE ERROR: %s\n", s);
-}
-
-V re(E e, CS s)
-{
-  printf("ERROR: %s\n", s);
-  C1(e) = NULL;
-}
+V pe(CS s) { printf("PARSE ERROR: %s\n", s); }
+V re(E e, CS s) { printf("ERROR: %s\n", s); C1(e) = NULL; }
 
 N nn(H h)
 {
@@ -335,93 +300,50 @@ N nn(H h)
 
 N ni(H h, I i)
 {
-  N n;
-
-  n      = nn(h);
-  n->t   = N_I;
-  n->v.i = i;
-
-  R (n);
+  N n; n = nn(h); n->t = N_I; n->v.i = i; R (n);
 }
 
 N nf(H h, F f)
 {
-  N n;
-
-  n      = nn(h);
-  n->t   = N_F;
-  n->v.f = f;
-
-  R (n);
+  N n; n = nn(h); n->t = N_F; n->v.f = f; R (n);
 }
 
 N nb(H h, I i)
 {
-  N n;
-
-  n      = nn(h);
-  n->t   = N_B;
-  n->v.i = i;
-
-  R (n);
+  N n; n = nn(h); n->t = N_B; n->v.i = i; R (n);
 }
 
 N ns(H h, S s)
 {
-  N n;
-
-  n        = nn(h);
-  n->t     = N_S;
-  n->v.d.b = s;
-  n->v.d.l = strlen(s) + 1;
-
+  N n; n = nn(h); n->t = N_S;
+  n->v.d.b = s; n->v.d.l = strlen(s) + 1;
   R (n);
 }
 
 N ny(H h, S s)
 {
-  N n;
-
-  n        = nn(h);
-  n->t     = N_Y;
+  N n; n = nn(h); n->t = N_Y;
   n->v.d.b = s;
   n->v.d.l = strlen(s) + 1;
-
   R (n);
 }
 
 N nq(H h)
 {
-  N n;
-
-  n    = nn(h);
-  n->t = N_Q;
-
-  R (n);
+  N n; n = nn(h); n->t = N_Q; R (n);
 }
 
 W nw(H h, S s)
 {
-  W w;
-
-  w    = (W)ma(h, sizeof(struct w));
-  w->s = s;
-
-  R (w);
+  W w; w = (W)ma(h, sizeof(struct w)); w->s = s; R (w);
 }
 
 N cb(H h, N n, CN o)
 {
   S b; L l;
-
-  l = o->v.d.l;
-  b = ma(h, l);
-
+  l = o->v.d.l; b = ma(h, l);
   memcpy(b, o->v.d.b, l);
-
-  n->v.d.b = b;
-  n->v.d.l = l;
-
+  n->v.d.b = b; n->v.d.l = l;
   R (n);
 }
 
@@ -432,35 +354,22 @@ N cn(H h, CN o)
     N n, q;
 
     switch (o->t) {
-    case N_S:
-    case N_Y: {
-      n    = nn(h);
-      n->t = o->t;
-
-      cb(h, n, o);
-
-      R (n);
+    case N_S: case N_Y: {
+      n = nn(h); n->t = o->t;
+      cb(h, n, o); R (n);
     }
     case N_Q: {
-      N t;
-
-      n = nq(h);
-
+      N t; n = nq(h);
       n->v.q = q = cn(h, o->v.q);
-      t    = o->v.q;
+      t = o->v.q;
 
       while (!ZP(t)) {
-        q->n = cn(h, t->n);
-        q    = q->n;
-        t    = t->n;
+        q->n = cn(h, t->n); q = q->n; t = t->n;
       }
 
       R (n);
     }
-    default:
-      n    = nn(h);
-      n->t = o->t;
-      n->v = o->v;
+    default: n = nn(h); n->t = o->t; n->v = o->v;
     }
 
     R (n);
@@ -530,14 +439,11 @@ H nh(L s)
 {
   H h;
 
-  h    = (H)malloc(sizeof(struct h));
-  h->u = 0;
-  h->s = s;
-  h->d = (C*)malloc(s);
+  h = (H)malloc(sizeof(struct h));
+  h->u = 0; h->s = s; h->d = (C*)malloc(s);
 
   if (ZP(h) || ZP(h->d)) {
-    perror("ERROR:");
-    exit (1);
+    perror("ERROR:"); exit (1);
   }
 
   R(h);
@@ -556,14 +462,11 @@ V cp(N *p, H h)
   if (ZP(*p)) R;
 
   if (ZP((*p)->o)) {
-    N t;
-    t = nn(h);
+    N t; t = nn(h);
     memcpy(t, *p, sizeof(struct n));
-    (*p)->o = t;
-    *p      = t;
+    (*p)->o = t; *p = t;
 
-    if (BYTESP((*p)))
-      cb(h, t, t);
+    if (BYTESP((*p))) cb(h, t, t);
   } else *p = (*p)->o;
 }
 
@@ -571,23 +474,18 @@ V gc(E e)
 {
   S r; N t; H h;
 
-  h = nh(e->dh->s);
-  r = h->d;
+  h = nh(e->dh->s); r = h->d;
 
-  cp(&e->d, h);
-  cp(&e->c, h);
+  cp(&e->d, h); cp(&e->c, h);
 
   while (r < (h->d + h->u)) {
     t = (N)r;
-
     if (t->t == N_Q) cp(&t->v.q, h);
-
     cp(&t->n, h);
     r += ln(t);
   }
 
-  free(e->dh->d);
-  free(e->dh);
+  free(e->dh->d); free(e->dh);
   e->dh = h;
 }
 
@@ -607,11 +505,11 @@ V eq(E e, N n)
 {
   struct e i;
 
-  i.d  = D1(e);
-  i.w  = e->w;
+  i.d = D1(e);
+  i.w = e->w;
   i.dh = e->dh;
   i.ch = e->ch;
-  i.c  = n->v.q;
+  i.c = n->v.q;
 
   ev(&i);
 
@@ -629,18 +527,14 @@ V ev(E e)
   while (!ZP(C1(e))) {
     if (C1(e)->t == N_Y) {
       W w;
-
       if ((w = wl(e->w, C1(e)->v.d.b))) {
         C1(e) = C2(e);
         wc(w, e);
       } else re(e, "undefined word");
     } else {
       N n;
-
-      n     = cn(e->dh, C1(e));
-      n->n  = D1(e);
-      D1(e) = n;
-      C1(e) = C2(e);
+      n = cn(e->dh, C1(e));
+      n->n = D1(e); D1(e) = n; C1(e) = C2(e);
     }
   }
 }
@@ -648,50 +542,33 @@ V ev(E e)
 V w_swap(E e)
 /* (b a -- a b) */
 {
-  N n;
-
-  A2(e);
-
-  n     = D2(e);
-  D2(e) = n->n;
-  n->n  = D1(e);
-  D1(e) = n;
+  N n; A2(e);
+  n = D2(e); D2(e) = n->n; n->n = D1(e); D1(e) = n;
 }
 
 V w_dup(E e)
 /* (a -- a a) */
 {
-  N n;
-
-  A1(e);
-
-  n     = cn(e->dh, D1(e));
-  n->n  = D1(e);
-  D1(e) = n;
+  N n; A1(e);
+  n = cn(e->dh, D1(e)); n->n = D1(e); D1(e) = n;
 }
 
 V w_pop(E e)
 /* (b a -- b) */
 {
-  A1(e);
-
-  D1(e) = D2(e);
+  A1(e); D1(e) = D2(e);
 }
 
 V w_cat(E e)
 /* ([b] [a] -- [b a]) */
 {
-  N l;
-
-  A2(e);
+  N l; A2(e);
   T2(e, N_Q, "cannot concatenate non-quotations");
 
   l = D2(e)->v.q;
 
   if (!ZP(l)) {
-    while (!ZP(l->n))
-      l = l->n;
-
+    while (!ZP(l->n)) l = l->n;
     l->n = D1(e)->v.q;
   }
 
@@ -701,76 +578,47 @@ V w_cat(E e)
 V w_cons(E e)
 /* (b [a] -- [b a]) */
 {
-  N b;
-
-  A2(e);
+  N b; A2(e);
   T1(e, N_Q, "cannot cons onto a non-quotation");
 
-  b          = D2(e);
-  D2(e)      = D3(e);
-  b->n       = D1(e)->v.q;
-  D1(e)->v.q = b;
+  b = D2(e); D2(e) = D3(e);
+  b->n = D1(e)->v.q; D1(e)->v.q = b;
 }
 
 V w_i(E e)
 /* ([a] -- ) */
 {
-  N n;
-
-  A1(e);
+  N n; A1(e);
   T1(e, N_Q, "cannot evaluate a non-quotation");
-
-  n     = D1(e);
-  D1(e) = D2(e);
-
-  eq(e, n);
+  n = D1(e); D1(e) = D2(e); eq(e, n);
 }
 
 V w_true(E e)
 /* ( -- ?) */
 {
-  N n;
-
-  n = nb(e->dh, 1);
-
-  n->n  = D1(e);
-  D1(e) = n;
+  N n; n = nb(e->dh, 1); n->n = D1(e); D1(e) = n;
 }
 
 V w_false(E e)
 /* ( -- ?) */
 {
-  N n;
-
-  n = nb(e->dh, 0);
-
-  n->n  = D1(e);
-  D1(e) = n;
+  N n; n = nb(e->dh, 0); n->n = D1(e); D1(e) = n;
 }
 
 V w_fixnump(E e) /* (a -- ?) */ { TP(e, N_I); }
-
 V w_flonump(E e) /* (a -- ?) */ { TP(e, N_F); }
-
 V w_boolp(E e) /* (a -- ?) */ { TP(e, N_B); }
-
 V w_stringp(E e) /* (a -- ?) */ { TP(e, N_S); }
-
 V w_quotationp(E e) /* (a -- ?) */ { TP(e, N_Q); }
 
 V w_branch(E e)
 /* (? [t] [f] -- ) */
 {
-  N n;
-
-  A3(e);
+  N n; A3(e);
   T2(e, N_Q, "cannot branch to a non-quotation");
-
   if (D3(e)->v.i) n = D2(e);
   else n = D1(e);
-
   D1(e) = D4(e);
-
   eq(e, n);
 }
 
@@ -798,16 +646,12 @@ W nd(H h)
 {
   int i, l; W p, w, d;
 
-  l = sizeof(id) / sizeof(id[0]);
-  d = id;
-  p = NULL;
+  l = sizeof(id) / sizeof(id[0]); d = id; p = NULL;
 
   for (i = 0; i < l; i++) {
-    w      = nw(h, d[i].s);
-    w->t   = d[i].t;
-    w->c.f = d[i].c.f;
-    w->n   = p;
-    p      = w;
+    w = nw(h, d[i].s);
+    w->t = d[i].t; w->c.f = d[i].c.f;
+    w->n = p; p = w;
   }
 
   R (w);
@@ -815,76 +659,51 @@ W nd(H h)
 
 V ef(E e, FILE *f, C prompt)
 {
-  struct p _p; P p;
-  T t; N l; H h;
-
-  p = &_p;
-  l = NULL;
-  ip(p, f);
+  struct p _p; P p; T t; N l;
+  p = &_p; l = NULL; ip(p, f);
 
 prompt:
   gc(e);
 
-  h = e->dh;
-
-  if (prompt)
-    printf("(USED: %dB) ", (int)h->u);
+  if (prompt) printf("(USED: %dB) ", (int)e->dh->u);
 
   while (1)
   {
-    switch ((t = rt(h, p)).t)
+    switch ((t = rt(e->dh, p)).t)
     {
-    case T_EF:
-      fclose(f);
-      R;
-    case T_EL:
-      ev(e);
-      goto prompt;
-    case T_CL:
-    {
+    case T_EF: fclose(f); R;
+    case T_EL: ev(e); goto prompt;
+    case T_CL: {
       W w;
-
       if (!ZP((w = rw(e->ch, p)))) {
-        w->n = e->w;
-        e->w = w;
+        w->n = e->w; e->w = w;
       }
       break;
     }
-    case T_SCL: case T_RQ:
-      break;
-    default:
-      l = app(ra(h, p, t), &e->c, &l);
+    case T_SCL: case T_RQ: break;
+    default: l = app(ra(e->dh, p, t), &e->c, &l);
     }
   }
 }
 
 V ie(E e, H h, H c)
 {
-  e->d  = NULL;
-  e->c  = NULL;
-  e->dh = h;
-  e->ch = c;
-  e->w  = nd(e->ch);
+  e->d = NULL; e->c = NULL;
+  e->dh = h; e->ch = c; e->w = nd(e->ch);
 }
 
 int
 main(int argc, char *argv[])
 {
-  struct e _e; E e;
-  H h, c;
-
-  e = &_e;
-  h = nh(1024*512);
-  c = nh(1024*512);
+  struct e _e; E e; H h, c;
+  e = &_e; h = nh(1024*512); c = nh(1024*512);
 
   ie(e, h, c);
 
   if (argc == 2) {
     FILE *f;
-    if (!ZP((f = fopen(argv[1], "r"))))
-      ef(e, f, 0);
-    else
-      perror(argv[1]);
+    if (!ZP((f = fopen(argv[1], "r")))) ef(e, f, 0);
+    else perror(argv[1]);
   }
 
   ef(e, stdin, 1);
