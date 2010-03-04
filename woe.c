@@ -533,18 +533,18 @@ W nd(H h)
   R (w);
 }
 
-V ef(E e, FILE *f, C prompt)
+V ef(E e, FILE *f, C in)
 {
   struct p _p; P p; T t; N l;
   p = &_p; l = NULL; ip(p, f);
-prompt:
+read:
   gc(e);
-  if (prompt) printf("(USED: %dB) ", (int)e->dh->u);
+  if (in) printf("> ");
   while (1)
   {
     switch ((t = rt(e->dh, p)).t) {
     case T_EF: fclose(f); R;
-    case T_EL: ev(e); goto prompt;
+    case T_EL: ev(e); if (in) printf(" "); goto read;
     case T_CL: {
       W w;
       if (!ZP((w = rw(e->ch, p)))) {
