@@ -33,7 +33,7 @@
     re(e, s); R;                                \
   }
 #define T2(e, a, s)                             \
-  if (D1(e)->t != a && D2(e)->t != a) {         \
+  if (D1(e)->t != a || D2(e)->t != a) {         \
     re(e, s); R;                                \
   }
 
