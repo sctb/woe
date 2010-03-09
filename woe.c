@@ -19,39 +19,39 @@
 #define P1(o,e) do { o->n = D2(e); D1(e) = o; } while (0);
 #define P2(o,e) do { o->n = D3(e); D1(e) = o; } while (0);
 
-#define A1(e)                                   \
+#define A1(e, w)                                \
   if (ZP(D1(e))) {                              \
-    re(e, "stack underflow"); R;                \
+    re(e, "stack underflow", w); R;             \
   }
-#define A2(e)                                   \
+#define A2(e, w)                                \
   if (ZP(D1(e)) || ZP(D2(e))) {                 \
-    re(e, "stack underflow"); R;                \
+    re(e, "stack underflow", w); R;             \
   }
-#define A3(e)                                   \
+#define A3(e, w)                                \
   if (ZP(D1(e)) || ZP(D2(e)) || ZP(D3(e))) {    \
-    re(e, "stack underflow"); R;                \
+    re(e, "stack underflow", w); R;             \
   }
 
-#define T1(e, a, s)                             \
+#define T1(e, a, s, w)                          \
   if (D1(e)->t != a) {                          \
-    re(e, s); R;                                \
+    re(e, s, w); R;                             \
   }
-#define T2(e, a, s)                             \
+#define T2(e, a, s, w)                          \
   if (D1(e)->t != a || D2(e)->t != a) {         \
-    re(e, s); R;                                \
+    re(e, s, w); R;                             \
   }
 
-#define TP(e, a)                                \
+#define TP(e, a, w)                             \
   do {                                          \
-    N _n; _n = nb(e->dh, 0); A1(e);             \
+    N _n; _n = nb(e->dh, 0); A1(e, w);          \
     if (D1(e)->t == a) _n->v.i = 1;             \
     _n->n = D2(e); D1(e) = _n;                  \
   } while (0);
 
-#define F1(e, n) N n; A1(e); T1(e, N_F, "expected two floats");
-#define F2(e, n) N n; A2(e); T2(e, N_F, "expected a float");
-#define I1(e, n) N n; A1(e); T1(e, N_I, "expected two integers");
-#define I2(e, n) N n; A2(e); T2(e, N_I, "expected an integer");
+#define F1(e, n, w) N n; A1(e, w); T1(e, N_F, "expected two floats", w);
+#define F2(e, n, w) N n; A2(e, w); T2(e, N_F, "expected a float", w);
+#define I1(e, n, w) N n; A1(e, w); T1(e, N_I, "expected two integers", w);
+#define I2(e, n, w) N n; A2(e, w); T2(e, N_I, "expected an integer", w);
 
 #define BYTESP(n) (n->t == N_S || n->t == N_Y)
 
@@ -67,8 +67,8 @@ typedef const char* CS;
 typedef struct t {
   enum {
     T_EL, T_EF,                 /* terminators */
-    T_S, T_I, T_F, T_LQ, T_Y,   /* term start  */
-    T_CL, T_SCL, T_RQ           /* term end    */
+    T_S, T_I, T_F, T_LP, T_Y,   /* term start  */
+    T_CL, T_SCL, T_RP           /* term end    */
   } t;
   union { I i; F f; S s; } v;
 } T;
@@ -125,7 +125,7 @@ V pn(CN n)
     else printf("f");
     break;
   case N_Q:
-    printf("["); pns(n->v.q); printf("]"); break;
+    printf("("); pns(n->v.q); printf(")"); break;
   }
 }
 
@@ -198,7 +198,7 @@ T ry(H h, P p)
   L l; C c, b[1024]; T t;
   l = 0; t.t = T_Y;
   while ((c = rc(p)) != '\0') {
-    if (LSP(c) || c == '\n' || strchr("[]:;", c)) {
+    if (LSP(c) || c == '\n' || strchr("():;", c)) {
       uc(p); break;
     }
     b[l++] = c;
@@ -216,17 +216,17 @@ restart:
   do {
     c = rc(p);
   } while (LSP(c));
-  if (c == '(') {
+  if (c == '\\') {
     do {
       c = rc(p);
-    } while (c != ')');
+    } while (c != '\n');
     goto restart;
   }
   switch (c) {
   case '\n': t.t = T_EL;  R (t);
   case '\0': t.t = T_EF;  R (t);
-  case '[':  t.t = T_LQ;  R (t);
-  case ']':  t.t = T_RQ;  R (t);
+  case '(':  t.t = T_LP;  R (t);
+  case ')':  t.t = T_RP;  R (t);
   case ':':  t.t = T_CL;  R (t);
   case ';':  t.t = T_SCL; R (t);
   case '"':  R (rs(h, p));
@@ -240,7 +240,7 @@ restart:
 }
 
 V pe(CS s) { printf("PARSE ERROR: %s\n", s); }
-V re(E e, CS s) { printf("ERROR: %s\n", s); C1(e) = NULL; }
+V re(E e, CS s, CS w) { printf("ERROR %s: %s\n", w, s); C1(e) = NULL; }
 
 N nn(H h)
 {
@@ -322,7 +322,7 @@ N ra(H h, P p, T t)
   case T_F:  R (nf(h, t.v.f));
   case T_S:  R (ns(h, t.v.s));
   case T_Y:  R (ny(h, t.v.s));
-  case T_LQ: R (rq(h, p));
+  case T_LP: R (rq(h, p));
   default:   R (NULL);
   }
 }
@@ -428,7 +428,7 @@ V ev(E e)
       if ((w = wl(e->w, C1(e)->v.d.b))) {
         C1(e) = C2(e);
         wc(w, e);
-      } else re(e, "undefined word");
+      } else re(e, "undefined word", C1(e)->v.d.b);
     } else {
       N n; n = cn(e->dh, C1(e));
       n->n = D1(e); D1(e) = n; C1(e) = C2(e);
@@ -437,16 +437,16 @@ V ev(E e)
 }
 
 V w_swap(E e) /* b a -- a b */
-{ N n; A2(e); n = D2(e); D2(e) = n->n; n->n = D1(e); D1(e) = n; }
+{ N n; A2(e, "~"); n = D2(e); D2(e) = n->n; n->n = D1(e); D1(e) = n; }
 
 V w_dup(E e) /* a -- a a */
-{ N n; A1(e); n = cn(e->dh, D1(e)); n->n = D1(e); D1(e) = n; }
+{ N n; A1(e, "''"); n = cn(e->dh, D1(e)); n->n = D1(e); D1(e) = n; }
 
-V w_pop(E e) /* b a -- b */ { A1(e); D1(e) = D2(e); }
+V w_pop(E e) /* b a -- b */ { A1(e, "_"); D1(e) = D2(e); }
 
-V w_cat(E e) /* [b] [a] -- [b a] */
+V w_cat(E e) /* (b) (a) -- (b a) */
 {
-  N l; A2(e); T2(e, N_Q, "cannot concatenate non-quotations");
+  N l; A2(e, ","); T2(e, N_Q, "cannot concatenate non-quotations", ",");
   l = D2(e)->v.q;
   if (!ZP(l)) {
     while (!ZP(l->n)) l = l->n;
@@ -455,16 +455,16 @@ V w_cat(E e) /* [b] [a] -- [b a] */
   w_pop(e);
 }
 
-V w_cons(E e) /* b [a] -- [b a] */
+V w_cons(E e) /* b (a) -- (b a) */
 {
-  N n; A2(e); T1(e, N_Q, "cannot cons onto a non-quotation");
+  N n; A2(e, ",'"); T1(e, N_Q, "cannot cons onto a non-quotation", ",'");
   n = D2(e); D2(e) = D3(e);
   n->n = D1(e)->v.q; D1(e)->v.q = n;
 }
 
-V w_e(E e) /* [a] -- */
+V w_e(E e) /* (a) -- */
 {
-  N n; A1(e); T1(e, N_Q, "cannot evaluate a non-quotation");
+  N n; A1(e, "e"); T1(e, N_Q, "cannot evaluate a non-quotation", "e");
   n = D1(e); D1(e) = D2(e); eq(e, n);
 }
 
@@ -474,103 +474,103 @@ V w_t(E e) /* -- ? */
 V w_f(E e) /* -- ? */
 { N n; n = nb(e->dh, 0); n->n = D1(e); D1(e) = n; }
 
-V w_ip(E e) /* (a -- ?) */ { TP(e, N_I); }
-V w_fp(E e) /* (a -- ?) */ { TP(e, N_F); }
-V w_bp(E e) /* (a -- ?) */ { TP(e, N_B); }
-V w_sp(E e) /* (a -- ?) */ { TP(e, N_S); }
-V w_qp(E e) /* (a -- ?) */ { TP(e, N_Q); }
+V w_ip(E e) /* (a -- ?) */ { TP(e, N_I, "IP"); }
+V w_fp(E e) /* (a -- ?) */ { TP(e, N_F, "FP"); }
+V w_bp(E e) /* (a -- ?) */ { TP(e, N_B, "BP"); }
+V w_sp(E e) /* (a -- ?) */ { TP(e, N_S, "SP"); }
+V w_qp(E e) /* (a -- ?) */ { TP(e, N_Q, "QP"); }
 
-V w_b(E e) /* ? [t] [f] -- */
+V w_b(E e) /* ? (t) (f) -- */
 {
-  N n; A3(e); T2(e, N_Q, "cannot branch to a non-quotation");
+  N n; A3(e, "?"); T2(e, N_Q, "cannot branch to a non-quotation", "?");
   if (D3(e)->v.i) n = D2(e);
   else n = D1(e);
   D1(e) = D4(e); eq(e, n);
 }
 
 V w_iadd(E e) /* i i -- i */
-{ I2(e, n); n = ni(e->dh, D1(e)->v.i + D2(e)->v.i); P2(n, e); }
+{ I2(e, n, "I+"); n = ni(e->dh, D1(e)->v.i + D2(e)->v.i); P2(n, e); }
 
 V w_isub(E e) /* i i -- i */
-{ I2(e, n); n = ni(e->dh, D1(e)->v.i - D2(e)->v.i); P2(n, e); }
+{ I2(e, n, "I-"); n = ni(e->dh, D1(e)->v.i - D2(e)->v.i); P2(n, e); }
 
 V w_idiv(E e) /* i i -- i */
-{ I2(e, n); n = ni(e->dh, D1(e)->v.i / D2(e)->v.i); P2(n, e); }
+{ I2(e, n, "I/"); n = ni(e->dh, D1(e)->v.i / D2(e)->v.i); P2(n, e); }
 
 V w_imul(E e) /* i i -- i */
-{ I2(e, n); n = ni(e->dh, D1(e)->v.i * D2(e)->v.i); P2(n, e); }
+{ I2(e, n, "I*"); n = ni(e->dh, D1(e)->v.i * D2(e)->v.i); P2(n, e); }
 
 V w_imod(E e) /* i -- i */
-{ I2(e, n); n = ni(e->dh, D1(e)->v.i % D2(e)->v.i); P2(n, e); }
+{ I2(e, n, "I%"); n = ni(e->dh, D1(e)->v.i % D2(e)->v.i); P2(n, e); }
 
 V w_itof(E e) /* i -- f */
-{ I1(e, n); n = nf(e->dh, (F)D1(e)->v.i); P1(n, e); }
+{ I1(e, n, "I."); n = nf(e->dh, (F)D1(e)->v.i); P1(n, e); }
 
 V w_ilt(E e) /* i i -- ? */
-{ I2(e, n); n = nb(e->dh, D1(e)->v.i < D2(e)->v.i); P2(n, e); }
+{ I2(e, n, "I<"); n = nb(e->dh, D1(e)->v.i < D2(e)->v.i); P2(n, e); }
 
 V w_igt(E e) /* i i -- ? */
-{ I2(e, n); n = nb(e->dh, D1(e)->v.i > D2(e)->v.i); P2(n, e); }
+{ I2(e, n, "I>"); n = nb(e->dh, D1(e)->v.i > D2(e)->v.i); P2(n, e); }
 
 V w_ile(E e) /* i i -- ? */
-{ I2(e, n); n = nb(e->dh, D1(e)->v.i <= D2(e)->v.i); P2(n, e); }
+{ I2(e, n, "I<="); n = nb(e->dh, D1(e)->v.i <= D2(e)->v.i); P2(n, e); }
 
 V w_ige(E e) /* i i -- ? */
-{ I2(e, n); n = nb(e->dh, D1(e)->v.i >= D2(e)->v.i); P2(n, e); }
+{ I2(e, n, "I>="); n = nb(e->dh, D1(e)->v.i >= D2(e)->v.i); P2(n, e); }
 
 V w_ieq(E e) /* i i -- ? */
-{ I2(e, n); n = nb(e->dh, D1(e)->v.i == D2(e)->v.i); P2(n, e); }
+{ I2(e, n, "I="); n = nb(e->dh, D1(e)->v.i == D2(e)->v.i); P2(n, e); }
 
 V w_fadd(E e) /* f -- f */
-{ F2(e, n); n = nf(e->dh, D1(e)->v.f + D2(e)->v.f); P2(n, e); }
+{ F2(e, n, "F+"); n = nf(e->dh, D1(e)->v.f + D2(e)->v.f); P2(n, e); }
 
 V w_fsub(E e) /* f f -- f */
-{ F2(e, n); n = nf(e->dh, D1(e)->v.f - D2(e)->v.f); P2(n, e); }
+{ F2(e, n, "F-"); n = nf(e->dh, D1(e)->v.f - D2(e)->v.f); P2(n, e); }
 
 V w_fdiv(E e) /* f f -- f */
-{ F2(e, n); n = nf(e->dh, D1(e)->v.f / D2(e)->v.f); P2(n, e); }
+{ F2(e, n, "F/"); n = nf(e->dh, D1(e)->v.f / D2(e)->v.f); P2(n, e); }
 
 V w_fmul(E e) /* f f -- f */
-{ F2(e, n); n = nf(e->dh, D1(e)->v.f * D2(e)->v.f); P2(n, e); }
+{ F2(e, n, "F*"); n = nf(e->dh, D1(e)->v.f * D2(e)->v.f); P2(n, e); }
 
 V w_fmod(E e) /* f f -- f */
-{ F2(e, n); n = nf(e->dh, fmod(D1(e)->v.f, D2(e)->v.f)); P2(n, e); }
+{ F2(e, n, "F%"); n = nf(e->dh, fmod(D1(e)->v.f, D2(e)->v.f)); P2(n, e); }
 
 V w_ftoi(E e) /* f -- i */
-{ F1(e, n); n = ni(e->dh, (I)D1(e)->v.f); P1(n, e); }
+{ F1(e, n, ".I"); n = ni(e->dh, (I)D1(e)->v.f); P1(n, e); }
 
 V w_fflr(E e) /* f -- f */
-{ F1(e, n); n = nf(e->dh, floor(D1(e)->v.f)); P1(n, e); }
+{ F1(e, n, "F_"); n = nf(e->dh, floor(D1(e)->v.f)); P1(n, e); }
 
 V w_fcil(E e) /* f -- f */
-{ F1(e, n); n = nf(e->dh, ceil(D1(e)->v.f)); P1(n, e); }
+{ F1(e, n, "F^"); n = nf(e->dh, ceil(D1(e)->v.f)); P1(n, e); }
 
 V w_frnd(E e) /* f -- f */
-{ F1(e, n); n = nf(e->dh, round(D1(e)->v.f)); P1(n, e); }
+{ F1(e, n, "F~"); n = nf(e->dh, round(D1(e)->v.f)); P1(n, e); }
 
 V w_flt(E e) /* f f -- ? */
-{ F2(e, n); n = nb(e->dh, D1(e)->v.f < D2(e)->v.f); P2(n, e); }
+{ F2(e, n, "F<"); n = nb(e->dh, D1(e)->v.f < D2(e)->v.f); P2(n, e); }
 
 V w_fgt(E e) /* f f -- ? */
-{ F2(e, n); n = nb(e->dh, D1(e)->v.f > D2(e)->v.f); P2(n, e); }
+{ F2(e, n, "F>"); n = nb(e->dh, D1(e)->v.f > D2(e)->v.f); P2(n, e); }
 
 V w_fle(E e) /* f f -- ? */
-{ F2(e, n); n = nb(e->dh, D1(e)->v.f <= D2(e)->v.f); P2(n, e); }
+{ F2(e, n, "F<="); n = nb(e->dh, D1(e)->v.f <= D2(e)->v.f); P2(n, e); }
 
 V w_fge(E e) /* f f -- ? */
-{ F2(e, n); n = nb(e->dh, D1(e)->v.f >= D2(e)->v.f); P2(n, e); }
+{ F2(e, n, "F>="); n = nb(e->dh, D1(e)->v.f >= D2(e)->v.f); P2(n, e); }
 
 V w_feq(E e) /* f f -- ? */
-{ F2(e, n); n = nb(e->dh, D1(e)->v.f == D2(e)->v.f); P2(n, e); }
+{ F2(e, n, "F="); n = nb(e->dh, D1(e)->v.f == D2(e)->v.f); P2(n, e); }
 
 V w_p(E e) /* a -- a */ { pn(D1(e)); printf("\n"); }
 
 struct w id[] = {
-  { W_F, "SWAP", { w_swap } },
-  { W_F, "DUP",  { w_dup  } },
-  { W_F, "POP",  { w_pop  } },
-  { W_F, "CAT",  { w_cat  } },
-  { W_F, "CONS", { w_cons } },
+  { W_F, "~",    { w_swap } },
+  { W_F, "''",   { w_dup  } },
+  { W_F, "_",    { w_pop  } },
+  { W_F, ",",    { w_cat  } },
+  { W_F, ",'",   { w_cons } },
   { W_F, "E",    { w_e    } },
   { W_F, "T",    { w_t    } },
   { W_F, "F",    { w_f    } },
@@ -639,7 +639,7 @@ read:
       }
       break;
     }
-    case T_SCL: case T_RQ: break;
+    case T_SCL: case T_RP: break;
     default: l = app(ra(e->dh, p, t), &e->c, &l);
     }
   }

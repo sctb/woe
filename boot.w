@@ -1,40 +1,40 @@
-: . (a -- ) p pop ;
+: . p _ ;                    \ a --
 
-: x ([a] -- [a]) dup e ;
-: y ([a] -- [a]) [dup cons] swap cat dup cons e ;
+: x '' e ;                   \ (a) -- (a)
+: y ('' ,') ~ , '' ,' e ;    \ (a) -- (a)
 
-: unit (a -- [a]) [] cons ;
+: ', () ,' ;                 \ a -- (a)
 
-: dip  (a [b] -- a) swap unit cat e ;
-: dip2 (a b [c] -- a b) [dip] cons dip ;
-: dip3 (a b c [d] -- a b c) [dip2] cons dip ;
-: dip4 (a b c d [e] -- a b c d) [dip3] cons dip ;
+: _e ~ ', , e ;              \ a (b) -- a
+: _e2 (_e) ,' _e ;           \ a b (c) -- a b
+: _e3 (_e2) ,' _e ;          \ a b c (d) -- a b c
+: _e4 (_e3) ,' _e ;          \ a b c d (e) -- a b c d
 
-: dig  (a b -- b a) [] cons dip ;
-: dig2 (a b c -- b c a) [] cons cons dip ;
-: dig3 (a b c d -- b c d a) [] cons cons cons dip ;
+: _^ () ,' _e ;              \ a b -- b a
+: _^2 () ,' ,' _e ;          \ a b c -- b c a
+: _^3 () ,' ,' ,' _e ;       \ a b c d -- b c d a
 
-: bury  (a b -- b a) [[] cons] dip swap e ;
-: bury2 (a b c -- c a b) [[] cons cons] dip swap e ;
-: bury3 (a b c d -- d a b c) [[] cons cons cons] dip swap e ;
+: _, (() ,') _e ~ e ;        \ a b -- b a
+: _,2 (() ,' ,') _e ~ e ;    \ a b c -- c a b
+: _,3 (() ,' ,' ,') _e ~ e ; \ a b c d -- d a b c
 
-: dup2 (a b -- a b a b) [dup] dip dup bury2 ;
-: dup3 (a b c -- a b c a b c) [dup2] dip dup bury3 ;
+: ''2 ('') _e '' _,2 ;       \ a b -- a b a b
+: ''3 (''2) _e '' _,3 ;      \ a b c -- a b c a b c
 
-: keep (a [b] -- a) swap dup bury2 [e] dip ;
-: keep2 (a b [c] -- a b) [dup2] dip dip2 ;
-: keep3 (a b c [d] -- a b c) [dup3] dip dip3 ;
+: # ~ '' _,2 (e) _e ;        \ a (b) -- a
+: #2 (''2) _e _e2 ;          \ a b (c) -- a b
+: #3 (''3) _e _e3 ;          \ a b c (d) -- a b c
 
-: when (? [t] -- ) swap [e] [pop] ? ;
-: unless (? [f] -- ) swap [pop] [e] ? ;
-: choice (? t f -- t/f) dig2 [pop] [swap pop] ? ;
+: t? ~ (e) (_) ? ;           \ ? (t) --
+: f? ~ (_) (e) ? ;           \ ? (f) --
+: or _^2 (_) (~ _) ? ;       \ ? t f -- t/f
 
-: and (? ? -- ?) f choice ;
-: or (? ? -- ?) t swap choice ;
-: xor (? ? -- ?) unit dup [not] cat swap ? ;
-: not (? -- ?) f t choice ;
+: & f | ;                    \ ? ? -- ?
+: | t ~ or ;                 \ ? ? -- ?
+: x| ', '' (not) , ~ ? ;     \ ? ? -- ?
+: ! f t | ;                  \ ? -- ?
 
-: loop ([p] -- ) [e] keep [loop] cons when ;
-: do ([p] [a] -- p [a]) dup dip2 ;
-: while ([p] [a] -- ) swap do cat [loop] cons when ;
-: until ([p] [a] -- ) [[not] cat] dip while ;
+: r (e) # (r) ,' t? ;        \ (p) --
+: r1 '' _e2 ;                \ (p) (a) -- p (a)
+: r? ~ r1 , (r) ,' t? ;      \ (p) (a) --
+: r!? ((not) ,) _e r? ;      \ (p) (a) --
