@@ -457,6 +457,23 @@ V w_cons(E e)
   n->n = D1(e)->v.q; D1(e)->v.q = n;
 }
 
+V w_hd(E e)
+{
+  N n; A1(e); T1(e, N_Q, "cannot take the head of a non-quotation");
+  if ((n = D1(e)->v.q)) { n->n = D2(e); D1(e) = n; }
+}
+
+V w_tl(E e) {
+  A1(e); T1(e, N_Q, "cannot take the tail of a non-quotation");
+  if (D1(e)->v.q) D1(e)->v.q = D1(e)->v.q->n;
+}
+
+V w_nilp(E e)
+{
+  N n; A1(e); T1(e, N_Q, "expected a quotation");
+  n = nb(e->dh, D1(e)->v.q ? 0 : 1); P1(n, e);
+}
+
 V w_e(E e)
 {
   N n; A1(e); T1(e, N_Q, "cannot evaluate a non-quotation");
@@ -515,6 +532,9 @@ struct w id[] = {
   { W_F, "_",    { w_pop  } }, /* b a -- b              */
   { W_F, ",",    { w_cat  } }, /* (b) (a) -- (b a)      */
   { W_F, ",'",   { w_cons } }, /* b (a) -- (b a)        */
+  { W_F, "@",    { w_hd   } }, /* (a b c) -- a          */
+  { W_F, "@_",   { w_tl   } }, /* (a b c) -- (b c)      */
+  { W_F, "_?",   { w_nilp } }, /* () -- ?               */
   { W_F, "E",    { w_e    } }, /* (a) --                */
   { W_F, "T",    { w_t    } }, /* -- ?                  */
   { W_F, "F",    { w_f    } }, /* -- ?                  */
