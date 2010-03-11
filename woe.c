@@ -29,14 +29,16 @@
 #define T1(e,a,s) if(D1(e)->t!=a){re(e,s);R;}
 #define T2(e,a,s) if(D1(e)->t!=a||D2(e)->t!=a){re(e,s);R;}
 
-#define TP(e,a)                                                 \
-  do {N _n;_n=nb(e,1,0);A1(e);                                  \
-    if(D1(e)->t==a){_n->v.i=1;}_n->n=D2(e);D1(e)=_n;}while(0);
-
 #define F1(e,n) N n;A1(e);T1(e,N_F,"expected a float");
 #define F2(e,n) N n;A2(e);T2(e,N_F,"expected two floats");
 #define I1(e,n) N n;A1(e);T1(e,N_I,"expected an integer");
 #define I2(e,n) N n;A2(e);T2(e,N_I,"expected two integers");
+#define Q1(e) T1(e,N_Q,"expected a quotation");
+#define Q2(e) T2(e,N_Q,"expected two quotations");
+
+#define TP(e,a)                                                 \
+  do {N _n;_n=nb(e,1,0);A1(e);                                  \
+    if(D1(e)->t==a){_n->v.i=1;}_n->n=D2(e);D1(e)=_n;}while(0);
 
 #define BP(n) (n->t==N_S||n->t==N_Y)
 #define FE() do{perror("FATAL ERROR");exit(1);}while(0);
@@ -275,33 +277,19 @@ Z V w_dup(E e){N n;A1(e);n=cn(e,1,D1(e));n->n=D1(e);D1(e)= n;}
 Z V w_pop(E e){A1(e);D1(e)=D2(e);}
 
 Z V w_cat(E e){
-  N l;A2(e);T2(e,N_Q,"cannot concatenate non-quotations");l=D2(e)->v.q;
+  N l;A2(e);Q2(e);l=D2(e)->v.q;
   if(!ZP(l)){while(!ZP(l->n)){l=l->n;}l->n=D1(e)->v.q;}w_pop(e);
 }
 
 Z V w_cons(E e){
-  N n;A2(e);T1(e,N_Q,"cannot cons onto a non-quotation");
-  n=D2(e);D2(e)=D3(e);n->n=D1(e)->v.q;D1(e)->v.q=n;
+  N n;A2(e);Q2(e);n=D2(e);D2(e)=D3(e);n->n=D1(e)->v.q;D1(e)->v.q=n;
 }
 
-Z V w_hd(E e){
-  N n;A1(e);T1(e,N_Q,"cannot take the head of a non-quotation");
-  if((n=D1(e)->v.q)){n->n=D2(e);D1(e)=n;}
-}
+Z V w_hd(E e){N n;A1(e);Q1(e);if((n=D1(e)->v.q)){n->n=D2(e);D1(e)=n;}}
+Z V w_tl(E e){A1(e);Q1(e);if(D1(e)->v.q){D1(e)->v.q=D1(e)->v.q->n;}}
+Z V w_nilp(E e){ N n;A1(e);Q1(e);n=nb(e,1,D1(e)->v.q?0:1);P1(n,e);}
 
-Z V w_tl(E e){
-  A1(e);T1(e,N_Q,"cannot take the tail of a non-quotation");
-  if(D1(e)->v.q){D1(e)->v.q=D1(e)->v.q->n;}
-}
-
-Z V w_nilp(E e){
-  N n;A1(e);T1(e,N_Q,"expected a quotation");n=nb(e,1,D1(e)->v.q?0:1);P1(n,e);
-}
-
-Z V w_e(E e){
-  N n;A1(e);T1(e,N_Q,"cannot evaluate a non-quotation");
-  n=D1(e);D1(e)=D2(e);eq(e,n);
-}
+Z V w_e(E e){N n;A1(e);Q1(e);n=D1(e);D1(e)=D2(e);eq(e,n);}
 
 Z V w_t(E e){N n;n=nb(e,1,1);n->n=D1(e);D1(e)=n;}
 Z V w_f(E e){N n;n=nb(e,1,0);n->n=D1(e);D1(e)=n;}
@@ -311,8 +299,7 @@ Z V w_bp(E e){TP(e,N_B);} Z V w_sp(E e){TP(e,N_S);}
 Z V w_qp(E e){TP(e,N_Q);}
 
 Z V w_b(E e){
-  N n;A3(e);T2(e,N_Q,"cannot branch to a non-quotation");
-  if(D3(e)->v.i){n=D2(e);}else{n=D1(e);}D1(e)=D4(e);eq(e, n);
+  N n;A3(e);Q2(e);if(D3(e)->v.i){n=D2(e);}else{n=D1(e);}D1(e)=D4(e);eq(e, n);
 }
 
 Z V w_iadd(E e){I2(e,n);n=ni(e,1,D1(e)->v.i+D2(e)->v.i);P2(n,e);}
