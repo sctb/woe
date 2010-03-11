@@ -43,13 +43,9 @@
 #define BP(n) (n->t==N_S||n->t==N_Y)
 #define FE() do{perror("FATAL ERROR");exit(1);}while(0);
 
-typedef void   V;
-typedef char   C;
-typedef char*  S;
-typedef size_t L;
-typedef long   I;
-typedef double F;
-
+typedef void V;typedef char C;
+typedef char* S;typedef size_t L;
+typedef long I;typedef double F;
 typedef const char* CS;
 
 typedef struct t{
@@ -87,8 +83,7 @@ Z V* ma(E e,C g,L n){
   V *p;H h;h=g?e->dh:e->ch;if(g&&!e->g&&h->u>h->s*0.8){gc(e);h=e->dh;}
   if(h->u>h->s*0.8){
     L s;s=h->s*2;h->d=realloc(h->d,s);if(ZP(h->d)){FE();}h->s=s;
-  }
-  p=h->d+h->u;h->u+=n;R(p);
+  }p=h->d+h->u;h->u+=n;R(p);
 }
 
 Z V pns(CN);
@@ -113,8 +108,7 @@ Z C rc(P p){
   if(p->p==p->l){
     if(ZP(fgets(p->b,1024,p->s))){R('\0');}
     p->l=strlen(p->b);p->p=0;
-  }
-  c=p->b[p->p++];R(c);
+  }c=p->b[p->p++];R(c);
 }
 
 Z V uc(P p){p->p--;}
@@ -131,10 +125,8 @@ Z T ri(P p){
     if(!strchr("0123456789+-",c)){
       if(strchr(".eE", c)){t.t=T_F;}
       else{uc(p);if(l>1||(l==1&&b[0]!='-')){break;}R(t);}
-    }
-    b[l++]=c;
-  }
-  b[l]='\0';
+    }b[l++]=c;
+  }b[l]='\0';
   if(t.t==T_F){t.v.f=strtod(b,NULL);}
   else{t.t=T_I;t.v.i=strtol(b,NULL,10);}
   R(t);
@@ -145,8 +137,7 @@ Z T ry(E e,C g,P p){
   while((c=rc(p))!='\0'){
     if(LSP(c)||c=='\n'||strchr("():;", c)){uc(p);break;}
     b[l++]=c;
-  }
-  b[l++]='\0';t.v.s=(C*)ma(e,g,sizeof(C)*l);strncpy(t.v.s,b,l);R(t);
+  }b[l++]='\0';t.v.s=(C*)ma(e,g,sizeof(C)*l);strncpy(t.v.s,b,l);R(t);
 }
 
 Z T rt(E e,C g,P p){
@@ -188,10 +179,8 @@ Z N cn(E e,C g,CN o){
     N t;n=nq(e,g);n->v.q=q=cn(e,g,o->v.q);t=o->v.q;
     while(!ZP(t)){q->n=cn(e,g,t->n);q=q->n;t=t->n;}
     R(n);
-  }
-  default:n=nn(e,g);n->t=o->t;n->v=o->v;
-  }
-  R(n);
+  }default:n=nn(e,g);n->t=o->t;n->v=o->v;
+  }R(n);
 }
 
 Z N ex(N n,N *h,N *l){if(ZP(*h)){*h=n;}if(ZP(*l)){*l=n;}else{(*l)->n=n;}R(n);}
@@ -213,15 +202,13 @@ Z N rq(E e,C g,P p){
     case T_EL:continue;case T_EF:pe("unexpected end-of-file");R(NULL);
     default:l=ex(ra(e,g,p,t),&n->v.q,&l);
     }
-  }
-  R(n);
+  }R(n);
 }
 
 Z W rw(E e,P p){
   T t;W w;if((t=rt(e,0,p)).t==T_Y){
     w=nw(e,0,t.v.s);w->t=W_Q;w->c.q=rq(e,0,p);R(w);
-  }
-  pe("expected word name after ':'");R(NULL);
+  }pe("expected word name after ':'");R(NULL);
 }
 
 Z H nh(L s){
@@ -246,8 +233,7 @@ Z V gc(E e){
   cp(e,1,&e->d);cp(e,1,&e->c); /* roots  */
   while(r<(h->d+h->u)){        /* cheney */
     t=(N)r;if(t->t==N_Q){cp(e,1,&t->v.q);}cp(e,1,&t->n);r+=ln(t);
-  }
-  e->g=0;free(o->d);free(o);
+  }e->g=0;free(o->d);free(o);
 }
 
 Z W wl(W w,CS s){
@@ -332,57 +318,28 @@ Z V w_feq(E e){F2(e,n);n=nb(e,1,D1(e)->v.f==D2(e)->v.f);P2(n,e);}
 Z V w_p(E e){pn(D1(e));printf("\n");}
 
 Z struct w id[] = {
-  {W_F,"~",  {w_swap}}, /* b a -- a b            */
-  {W_F,"''", {w_dup }}, /* a -- a a              */
-  {W_F,"_",  {w_pop }}, /* b a -- b              */
-  {W_F,",",  {w_cat }}, /* (b) (a) -- (b a)      */
-  {W_F,",'", {w_cons}}, /* b (a) -- (b a)        */
-  {W_F,"@",  {w_hd  }}, /* (a b c) -- a          */
-  {W_F,"@_", {w_tl  }}, /* (a b c) -- (b c)      */
-  {W_F,"_?", {w_nilp}}, /* () -- ?               */
-  {W_F,"E",  {w_e   }}, /* (a) --                */
-  {W_F,"T",  {w_t   }}, /* -- ?                  */
-  {W_F,"F",  {w_f   }}, /* -- ?                  */
-  {W_F,"I?", {w_ip  }}, /* (a -- ?)              */
-  {W_F,"F?", {w_fp  }}, /* (a -- ?)              */
-  {W_F,"B?", {w_bp  }}, /* (a -- ?)              */
-  {W_F,"S?", {w_sp  }}, /* (a -- ?)              */
-  {W_F,"Q?", {w_qp  }}, /* (a -- ?)              */
-  {W_F,"?",  {w_b   }}, /* ? (t) (f) --          */
-  {W_F,"p",  {w_p   }}, /* a -- a                */
-  {W_F,"i+", {w_iadd}}, /* i -- i                */
-  {W_F,"i-", {w_isub}}, /* i -- i                */
-  {W_F,"i/", {w_idiv}}, /* i -- i                */
-  {W_F,"i*", {w_imul}}, /* i -- i                */
-  {W_F,"i%", {w_imod}}, /* i -- i                */
-  {W_F,"i.", {w_itof}}, /* i -- f                */
-  {W_F,"i<", {w_ilt }}, /* i i -- ?              */
-  {W_F,"i>", {w_igt }}, /* i i -- ?              */
-  {W_F,"i<=",{w_ile }}, /* i i -- ?              */
-  {W_F,"i>=",{w_ige }}, /* i i -- ?              */
-  {W_F,"i=", {w_ieq }}, /* i i -- ?              */
-  {W_F,"f+", {w_fadd}}, /* f f -- f              */
-  {W_F,"f-", {w_fsub}}, /* f f -- f              */
-  {W_F,"f/", {w_fdiv}}, /* f f -- f              */
-  {W_F,"f*", {w_fmul}}, /* f f -- f              */
-  {W_F,"f%", {w_fmod}}, /* f f -- f              */
-  {W_F,".i", {w_ftoi}}, /* f -- i                */
-  {W_F,"f_", {w_fflr}}, /* f -- f                */
-  {W_F,"f^", {w_fcil}}, /* f -- f                */
-  {W_F,"f~", {w_frnd}}, /* f -- f                */
-  {W_F,"f<", {w_flt }}, /* f f -- ?              */
-  {W_F,"f>", {w_fgt }}, /* f f -- ?              */
-  {W_F,"f<=",{w_fle }}, /* f f -- ?              */
-  {W_F,"f>=",{w_fge }}, /* f f -- ?              */
-  {W_F,"f=", {w_feq }}, /* f f -- ?              */
+  {W_F,"~",  {w_swap}},{W_F,"''", {w_dup }},{W_F,"_",  {w_pop }},
+  {W_F,",",  {w_cat }},{W_F,",'", {w_cons}},{W_F,"@",  {w_hd  }},
+  {W_F,"@_", {w_tl  }},{W_F,"_?", {w_nilp}},{W_F,"E",  {w_e   }},
+  {W_F,"T",  {w_t   }},{W_F,"F",  {w_f   }},{W_F,"I?", {w_ip  }},
+  {W_F,"F?", {w_fp  }},{W_F,"B?", {w_bp  }},{W_F,"S?", {w_sp  }},
+  {W_F,"Q?", {w_qp  }},{W_F,"?",  {w_b   }},{W_F,"p",  {w_p   }},
+  {W_F,"i+", {w_iadd}},{W_F,"i-", {w_isub}},{W_F,"i/", {w_idiv}},
+  {W_F,"i*", {w_imul}},{W_F,"i%", {w_imod}},{W_F,"i.", {w_itof}},
+  {W_F,"i<", {w_ilt }},{W_F,"i>", {w_igt }},{W_F,"i<=",{w_ile }},
+  {W_F,"i>=",{w_ige }},{W_F,"i=", {w_ieq }},{W_F,"f+", {w_fadd}},
+  {W_F,"f-", {w_fsub}},{W_F,"f/", {w_fdiv}},{W_F,"f*", {w_fmul}},
+  {W_F,"f%", {w_fmod}},{W_F,".i", {w_ftoi}},{W_F,"f_", {w_fflr}},
+  {W_F,"f^", {w_fcil}},{W_F,"f~", {w_frnd}},{W_F,"f<", {w_flt }},
+  {W_F,"f>", {w_fgt }},{W_F,"f<=",{w_fle }},{W_F,"f>=",{w_fge }},
+  {W_F,"f=", {w_feq }}
 };
 
 Z W nd(E e){
   int i,l;W p,w,d;l=sizeof(id)/sizeof(id[0]);d=id;p=NULL;
   for(i=0;i<l;i++){
     w=nw(e,0,d[i].s);w->t=d[i].t;w->c.f=d[i].c.f;w->n=p;p=w;
-  }
-  R(w);
+  }R(w);
 }
 
 Z V ef(E e,FILE *f,C in){
@@ -407,6 +364,5 @@ int main(int ac,C *av[]){
   if(ac==2){
     FILE *f;if(!ZP((f=fopen(av[1],"r")))){ef(e,f,0);}
     else{perror(av[1]);}
-  }
-  ef(e,stdin,1);R(0);
+  }ef(e,stdin,1);R(0);
 }
