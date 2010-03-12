@@ -268,7 +268,7 @@ Z V w_cat(E e){
 }
 
 Z V w_cons(E e){
-  N n;A2(e);Q2(e);n=D2(e);D2(e)=D3(e);n->n=D1(e)->v.q;D1(e)->v.q=n;
+  N n;A2(e);Q1(e);n=D2(e);D2(e)=D3(e);n->n=D1(e)->v.q;D1(e)->v.q=n;
 }
 
 Z V w_hd(E e){N n;A1(e);Q1(e);if((n=D1(e)->v.q)){n->n=D2(e);D1(e)=n;}}
