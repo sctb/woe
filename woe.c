@@ -271,8 +271,8 @@ Z V w_cons(E e){
   N n;A2(e);Q1(e);n=D2(e);D2(e)=D3(e);n->n=D1(e)->v.q;D1(e)->v.q=n;
 }
 
-Z V w_hd(E e){N n;A1(e);Q1(e);if((n=D1(e)->v.q)){n->n=D2(e);D1(e)=n;}}
-Z V w_tl(E e){A1(e);Q1(e);if(D1(e)->v.q){D1(e)->v.q=D1(e)->v.q->n;}}
+Z V w_head(E e){N n;A1(e);Q1(e);if((n=D1(e)->v.q)){n->n=D2(e);D1(e)=n;}}
+Z V w_tail(E e){A1(e);Q1(e);if(D1(e)->v.q){D1(e)->v.q=D1(e)->v.q->n;}}
 Z V w_nilp(E e){ N n;A1(e);Q1(e);n=nb(e,1,D1(e)->v.q?0:1);P1(n,e);}
 
 Z V w_e(E e){N n;A1(e);Q1(e);n=D1(e);D1(e)=D2(e);eq(e,n);}
@@ -318,12 +318,13 @@ Z V w_feq(E e){F2(e,n);n=nb(e,1,D1(e)->v.f==D2(e)->v.f);P2(n,e);}
 Z V w_p(E e){pn(D1(e));printf("\n");}
 
 Z struct w id[] = {
-  {W_F,"~",  {w_swap}},{W_F,"''", {w_dup }},{W_F,"_",  {w_pop }},
-  {W_F,",",  {w_cat }},{W_F,",'", {w_cons}},{W_F,"@",  {w_hd  }},
-  {W_F,"@_", {w_tl  }},{W_F,"_?", {w_nilp}},{W_F,"E",  {w_e   }},
-  {W_F,"T",  {w_t   }},{W_F,"F",  {w_f   }},{W_F,"I?", {w_ip  }},
-  {W_F,"F?", {w_fp  }},{W_F,"B?", {w_bp  }},{W_F,"S?", {w_sp  }},
-  {W_F,"Q?", {w_qp  }},{W_F,"?",  {w_b   }},{W_F,"p",  {w_p   }},
+  {W_F,"swap",  {w_swap}},{W_F,"dup",  {w_dup}}, {W_F,"pop",    {w_pop}},
+  {W_F,"cat",   {w_cat}}, {W_F,"cons", {w_cons}},{W_F,"head",   {w_head}},
+  {W_F,"tail",  {w_tail}},{W_F,"nil?", {w_nilp}},{W_F,"e",      {w_e}},
+  {W_F,"t",     {w_t}},   {W_F,"f",    {w_f}},   {W_F,"int?",   {w_ip}},
+  {W_F,"float?",{w_fp}},  {W_F,"bool?",{w_bp}},  {W_F,"string?",{w_sp}},
+  {W_F,"quot?", {w_qp}},  {W_F,"?",    {w_b}},   {W_F,"p",      {w_p}},
+  /* numerics */
   {W_F,"i+", {w_iadd}},{W_F,"i-", {w_isub}},{W_F,"i/", {w_idiv}},
   {W_F,"i*", {w_imul}},{W_F,"i%", {w_imod}},{W_F,"i.", {w_itof}},
   {W_F,"i<", {w_ilt }},{W_F,"i>", {w_igt }},{W_F,"i<=",{w_ile }},
