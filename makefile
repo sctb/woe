@@ -1,7 +1,8 @@
 .PHONY: all clean
 
 CC	?= cc
-CFLAGS	+= -std=c89 -Wall -pedantic
+CFLAGS	+= -static -std=c89 -Wall -pedantic
+LDFLAGS	+= -lm
 
 all:	woe
 
