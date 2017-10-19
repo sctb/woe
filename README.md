@@ -1,0 +1,1 @@
+`make && ./woe boot.w`
